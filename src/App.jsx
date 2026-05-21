@@ -384,6 +384,27 @@ const MapView = () => {
 
       mapRef.current = map;
 
+      // FIX: Forzar resize del mapa cuando el contenedor tenga dimensiones
+      const resizeMap = () => { try { map.resize(); } catch {} };
+      setTimeout(resizeMap, 100);
+      setTimeout(resizeMap, 500);
+      setTimeout(resizeMap, 1200);
+
+      // Observer para redimensionar si el contenedor cambia
+      let ro;
+      try {
+        ro = new ResizeObserver(() => resizeMap());
+        ro.observe(containerRef.current);
+      } catch {}
+      window.addEventListener("resize", resizeMap);
+      window.addEventListener("orientationchange", resizeMap);
+
+      mapRef.current._cleanupResize = () => {
+        try { ro && ro.disconnect(); } catch {}
+        window.removeEventListener("resize", resizeMap);
+        window.removeEventListener("orientationchange", resizeMap);
+      };
+
       map.on("load", () => {
         // Zonas semáforo como capas
         const zones = [
@@ -451,6 +472,7 @@ const MapView = () => {
 
     return () => {
       if (mapRef.current) {
+        try { mapRef.current._cleanupResize && mapRef.current._cleanupResize(); } catch {}
         try { mapRef.current.remove(); } catch {}
         mapRef.current = null;
       }
@@ -497,8 +519,20 @@ const MapView = () => {
   }
 
   return (
-    <div className="absolute inset-0" style={{ background: "#0F1729", zIndex: 0 }}>
-      <div ref={containerRef} className="absolute inset-0" style={{ background: "#0F1729" }} />
+    <div className="absolute inset-0" style={{ background: "#0F1729", zIndex: 0, width: "100%", height: "100%" }}>
+      <div
+        ref={containerRef}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          width: "100%",
+          height: "100%",
+          background: "#0F1729"
+        }}
+      />
       {!ready && (
         <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ background: C.bg }}>
           <Loader size={28} color={C.blue} className="animate-spin mb-3" />
@@ -506,10 +540,11 @@ const MapView = () => {
         </div>
       )}
       <style>{`
-        .mapboxgl-canvas { outline: none !important; }
-        .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-logo { display: none !important; }
-        .mapboxgl-canvas-container { cursor: grab; }
+        .mapboxgl-canvas { outline: none !important; width: 100% !important; height: 100% !important; }
+        .mapboxgl-canvas-container { width: 100% !important; height: 100% !important; cursor: grab; }
         .mapboxgl-canvas-container.mapboxgl-interactive:active { cursor: grabbing; }
+        .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-logo { display: none !important; }
+        .mapboxgl-map { width: 100% !important; height: 100% !important; }
       `}</style>
     </div>
   );
