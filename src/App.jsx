@@ -1,16 +1,16 @@
 import { useState, useEffect, useRef, useReducer, createContext, useContext } from "react";
 import {
-  Menu, Search, Layers, Crosshair, AlertTriangle, Camera, ChevronLeft,
+  Menu, Search, Crosshair, AlertTriangle, Camera, ChevronLeft,
   Star, Phone, FileText, Shield, MapPin, X, ChevronRight, ScanLine,
   Siren, Users, BookOpen, PhoneCall, Image as ImageIcon, Video,
   Send, Sparkles, Heart, Zap, BadgeCheck, Navigation2, ArrowRight,
-  Flame, Truck, HeartPulse, Megaphone, Lock, ShieldAlert, Mic,
-  MessageCircle, ThumbsUp, Eye, DollarSign, UserX, HelpCircle,
-  ShieldOff, Check, Ban, AlertCircle, EyeOff, Plus, Trash2, Edit3,
-  Clock, CheckCircle2, Circle, EyeIcon, Footprints, Calculator,
-  Award, TrendingUp, UserCheck, Bell, Home, Smile, ThumbsDown,
-  Car, Hash, Loader, ScrollText, Compass, ArrowLeft, ChevronDown,
-  Mail, User, AtSign, Pencil
+  HeartPulse, Megaphone, Lock, ShieldAlert, Mic,
+  MessageCircle, ThumbsUp, Eye, HelpCircle,
+  Check, AlertCircle, Plus,
+  Clock, CheckCircle2, Circle, Footprints, Calculator,
+  Award, TrendingUp, UserCheck, Bell, Home,
+  Car, Hash, Loader, ScrollText, Compass, ChevronDown,
+  User, AtSign
 } from "lucide-react";
 
 // === BRAND ===
@@ -629,11 +629,10 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
         </button>
       </div>
 
-      {/* Map controls overlay */}
-      <div className="flex-1 relative">
+      {/* Map controls overlay - pointer-events:none deja pasar toques al mapa */}
+      <div className="flex-1 relative" style={{ pointerEvents: "none" }}>
         {/* Legend */}
-        <div className="absolute top-3 left-4 rounded-2xl px-3 py-2 backdrop-blur-md"
-          style={{ background: `${C.surface}CC`, border: `1px solid ${C.border}` }}>
+        <div className="absolute top-3 left-4 rounded-2xl px-3 py-2 backdrop-blur-md" style={{ background: `${C.surface}CC`, border: `1px solid ${C.border}`, pointerEvents: "auto" }}>
           <p className="font-display font-bold text-[9px] text-white uppercase tracking-widest mb-1.5">Zonas</p>
           <div className="flex flex-col gap-1">
             <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ background: C.red }} /><span className="text-[10px] text-white font-body">Muchas incidencias</span></div>
@@ -644,7 +643,7 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
 
         {/* Layers button */}
         <button onClick={() => onNav("modus")} className="absolute top-3 right-4 w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-md"
-          style={{ background: `${C.surface}CC`, border: `1px solid ${C.border}` }}>
+          style={{ background: `${C.surface}CC`, border: `1px solid ${C.border}`, pointerEvents: "auto" }}>
           <Bell size={18} color="white" />
         </button>
 
@@ -655,22 +654,20 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
             (pos) => {
               const coords = [pos.coords.latitude, pos.coords.longitude];
               try { localStorage.setItem("proalert_userpos", JSON.stringify(coords)); } catch {}
-              // Forzar reload del mapa con la nueva ubicación
               window.dispatchEvent(new CustomEvent("proalert_locate", { detail: coords }));
             },
             () => {},
             { enableHighAccuracy: true, timeout: 10000 }
           );
         }} className="absolute bottom-32 right-4 w-12 h-12 rounded-full flex items-center justify-center backdrop-blur-md"
-          style={{ background: `${C.surface}E6`, border: `1px solid ${C.border}` }}>
+          style={{ background: `${C.surface}E6`, border: `1px solid ${C.border}`, pointerEvents: "auto" }}>
           <Crosshair size={20} color="white" />
         </button>
-        
 
         {/* Floating women button */}
         <button onClick={onWomen}
           className="absolute bottom-32 left-4 w-12 h-12 rounded-full flex items-center justify-center shadow-2xl"
-          style={{ background: C.pink, boxShadow: `0 6px 20px ${C.pink}88`, position: "absolute" }}>
+          style={{ background: C.pink, boxShadow: `0 6px 20px ${C.pink}88`, pointerEvents: "auto" }}>
           <div className="absolute inset-0 rounded-full pulse-ring" style={{ background: C.pink, opacity: 0.4 }} />
           <Heart size={20} color="white" fill="white" />
         </button>
@@ -678,7 +675,7 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
         {/* Quick assistant button - bottom center */}
         <button onClick={() => onNav("assistant")}
           className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 h-12 rounded-full flex items-center gap-2 backdrop-blur-md"
-          style={{ background: C.orange, boxShadow: `0 6px 20px ${C.orange}88` }}>
+          style={{ background: C.orange, boxShadow: `0 6px 20px ${C.orange}88`, pointerEvents: "auto" }}>
           <Compass size={18} color="white" />
           <span className="font-display font-bold text-white text-xs uppercase tracking-wider">¿Qué hago?</span>
         </button>
@@ -876,6 +873,7 @@ const ScanScreen = ({ onBack, onScanned, onNav, onPanic }) => {
 
 // === POLICE PROFILE ===
 const PoliceProfile = ({ onBack, onNav, onPanic }) => {
+  const { toast } = useApp();
   const [stars, setStars] = useState(3);
   return (
     <div className="relative h-full flex flex-col" style={{ background: C.bg }}>
@@ -941,7 +939,7 @@ const PoliceProfile = ({ onBack, onNav, onPanic }) => {
             <ShieldAlert size={18} />
             Reportar a este policía
           </button>
-          <button className="w-full py-3 rounded-2xl font-display font-semibold text-white text-xs uppercase tracking-wider"
+          <button onClick={() => toast("Interacción guardada en tu historial")} className="w-full py-3 rounded-2xl font-display font-semibold text-white text-xs uppercase tracking-wider"
             style={{ background: C.card, border: `1px solid ${C.border}` }}>
             Guardar interacción
           </button>
@@ -1135,7 +1133,7 @@ const ReportScreen = ({ onBack, onNav, onPanic }) => {
 
 // === MI DENUNCIA ===
 const DenunciaScreen = ({ onBack, onNav, onPanic }) => {
-  const { state } = useApp();
+  const { state, toast } = useApp();
   const steps = [
     { n: "01", t: "Reúne tu identificación", d: "INE, pasaporte o cédula. Si fuiste víctima, lleva pruebas." },
     { n: "02", t: "Acude al MP más cercano", d: "Te mostramos las ubicaciones disponibles a continuación." },
@@ -1227,7 +1225,7 @@ const DenunciaScreen = ({ onBack, onNav, onPanic }) => {
             { n: "MP Benito Juárez", a: "2.8 km · Eje Central 14" },
             { n: "MP Miguel Hidalgo", a: "3.5 km · Parque Lira 128" },
           ].map(mp => (
-            <button key={mp.n} className="rounded-2xl p-4 flex items-center justify-between" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+            <button key={mp.n} onClick={() => toast(`${mp.n} · ${mp.a}`)} className="rounded-2xl p-4 flex items-center justify-between" style={{ background: C.card, border: `1px solid ${C.border}` }}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: C.cardHi }}>
                   <MapPin size={18} color={C.blue} />
@@ -1807,7 +1805,17 @@ const EmergencyScreen = ({ onBack }) => {
 };
 
 // === WOMEN EMERGENCY ===
-const WomenScreen = ({ onBack }) => (
+const WomenScreen = ({ onBack }) => {
+  const { toast } = useApp();
+  const [active, setActive] = useState(false);
+
+  const activate = () => {
+    setActive(true);
+    toast("Alerta enviada · Tus contactos y la policía especializada fueron notificados");
+    setTimeout(onBack, 1800);
+  };
+
+  return (
   <div className="h-full flex flex-col" style={{ background: `radial-gradient(circle at 50% 0%, ${C.pink}33 0%, ${C.bg} 60%)` }}>
     <StatusBar />
     <Header onBack={onBack} title="ALERTA MUJER" />
@@ -1839,13 +1847,14 @@ const WomenScreen = ({ onBack }) => (
           </div>
         ))}
       </div>
-      <button className="w-full py-4 rounded-2xl font-display font-black text-white text-base uppercase tracking-widest"
-        style={{ background: C.pink, boxShadow: `0 8px 30px ${C.pink}88` }}>
-        Activar alerta
+      <button onClick={activate} disabled={active} className="w-full py-4 rounded-2xl font-display font-black text-white text-base uppercase tracking-widest transition-all"
+        style={{ background: active ? C.green : C.pink, boxShadow: `0 8px 30px ${(active ? C.green : C.pink)}88`, opacity: active ? 0.9 : 1 }}>
+        {active ? "✓ Alerta enviada" : "Activar alerta"}
       </button>
     </div>
   </div>
-);
+  );
+};
 
 // === REPORTAR POLICÍA ===
 const ReportPoliceScreen = ({ onBack, onNav }) => {
@@ -2076,7 +2085,7 @@ const CommunityScreen = ({ onBack, onNav }) => {
                     <span className="text-[11px] font-display font-bold" style={{ color: C.green }}>Yo lo vi</span>
                   </button>
                 )}
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                <button onClick={() => toast("Función de comentarios próximamente")} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
                   style={{ background: C.cardHi, border: `1px solid ${C.border}` }}>
                   <MessageCircle size={12} color={C.muted} />
                   <span className="text-[11px] font-display font-bold" style={{ color: C.muted }}>Comentar</span>
@@ -3090,39 +3099,63 @@ const RouteScreen = ({ onBack, onNav }) => {
     setSearching(true);
   };
 
-  const routes = {
-    fast: {
-      time: "18 min", distance: "5.2 km", traffic: "Moderado",
-      via: "Av. Patriotismo · Eje 4 Sur",
-      warnings: 2,
-      steps: [
-        "Continúa por Av. Patriotismo 1.2 km",
-        "⚠️ Cruza por zona de alerta (Escandón centro)",
-        "Toma Eje 4 Sur 2.1 km",
-        "Vuelta a la derecha en Insurgentes",
-        "Llegas a destino"
-      ],
-    },
-    safe: {
-      time: "24 min", distance: "6.1 km", traffic: "Ligero",
-      via: "Av. Revolución · Av. Insurgentes",
-      warnings: 0,
-      steps: [
-        "Toma Av. Revolución hacia el sur 2.5 km",
-        "Continúa por San Pedro de los Pinos (zona segura)",
-        "Vuelta a la izquierda en Insurgentes 1.8 km",
-        "Pasa por Nápoles (riesgo medio, evitable)",
-        "Llegas a destino"
-      ],
-    },
-  };
-
   // Coordenadas de destinos populares (preset)
   const destinationCoords = {
     "Mi casa": [19.3590, -99.1422],
     "Trabajo": [19.4274, -99.1670],
     "Plaza Antara": [19.4407, -99.2055],
     "Aeropuerto CDMX": [19.4361, -99.0719],
+  };
+
+  // Calcular distancia entre dos puntos GPS (Haversine, en km)
+  const haversine = (a, b) => {
+    if (!a || !b) return 0;
+    const R = 6371;
+    const dLat = (b[0] - a[0]) * Math.PI / 180;
+    const dLng = (b[1] - a[1]) * Math.PI / 180;
+    const lat1 = a[0] * Math.PI / 180;
+    const lat2 = b[0] * Math.PI / 180;
+    const x = Math.sin(dLat/2)**2 + Math.sin(dLng/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+    return 2 * R * Math.asin(Math.sqrt(x));
+  };
+
+  // Calcular rutas dinámicas según destino real
+  const startCoord = userLoc || [19.4015, -99.180];
+  const endCoord = destinationCoords[destination] || [startCoord[0] + 0.025, startCoord[1] + 0.02];
+  const distKm = haversine(startCoord, endCoord);
+  // Multiplicadores: ruta rápida 1.15x línea recta, ruta segura 1.35x (más vueltas)
+  const fastDistKm = Math.max(0.5, distKm * 1.15);
+  const safeDistKm = Math.max(0.6, distKm * 1.35);
+  // Velocidad: rápida ~25 km/h (con tráfico), segura ~22 km/h (menos vías rápidas)
+  const fastTimeMin = Math.max(3, Math.round(fastDistKm / 25 * 60));
+  const safeTimeMin = Math.max(4, Math.round(safeDistKm / 22 * 60));
+  const savedMin = Math.max(1, safeTimeMin - fastTimeMin);
+
+  const routes = {
+    fast: {
+      time: `${fastTimeMin} min`, distance: `${fastDistKm.toFixed(1)} km`, traffic: distKm > 8 ? "Pesado" : distKm > 4 ? "Moderado" : "Ligero",
+      via: distKm > 6 ? "Periférico · Vías rápidas" : "Av. Patriotismo · Eje 4 Sur",
+      warnings: 2,
+      steps: [
+        `Sal hacia ${destination} (${fastDistKm.toFixed(1)} km en total)`,
+        "⚠️ Cruza por zona de alerta",
+        `Continúa por vía principal ${(fastDistKm * 0.5).toFixed(1)} km`,
+        "Toma desvío directo al destino",
+        `Llegas a ${destination}`
+      ],
+    },
+    safe: {
+      time: `${safeTimeMin} min`, distance: `${safeDistKm.toFixed(1)} km`, traffic: "Ligero",
+      via: "Vías secundarias seguras",
+      warnings: 0,
+      steps: [
+        `Sal hacia ${destination} (${safeDistKm.toFixed(1)} km, vía segura)`,
+        "Toma vías secundarias evitando zonas de alerta",
+        `Continúa por zonas seguras ${(safeDistKm * 0.5).toFixed(1)} km`,
+        "Acércate a destino por ruta vigilada",
+        `Llegas a ${destination}`
+      ],
+    },
   };
 
   const startNav = async () => {
@@ -3279,7 +3312,7 @@ const RouteScreen = ({ onBack, onNav }) => {
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.blue }}><Zap size={16} color="white" /></div>
                 <div>
                   <p className="font-display font-bold text-white text-base leading-tight">Ruta más rápida</p>
-                  <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: C.blue }}>Ahorra 6 min</p>
+                  <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: C.blue }}>Ahorra {savedMin} min</p>
                 </div>
               </div>
               {selected === "fast" && <BadgeCheck size={22} color={C.blue} />}
