@@ -228,19 +228,21 @@ const BottomNav = ({ active, onNav }) => {
   );
 };
 
-// === MAPA REAL CON LEAFLET (con fallback SVG) ===
+// === MAPBOX TOKEN (inyectado desde index.html con variable de entorno) ===
+const MAPBOX_TOKEN = (typeof window !== "undefined" && window.__MAPBOX_TOKEN__) ? window.__MAPBOX_TOKEN__ : "";
+
+// === MAPA REAL CON MAPBOX GL JS ===
 const MapView = () => {
   const mapRef = useRef(null);
   const containerRef = useRef(null);
   const userMarkerRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [userPos, setUserPos] = useState(null); // [lat, lng]
+  const [userPos, setUserPos] = useState(null);
 
   // Obtener ubicación real del usuario
   useEffect(() => {
     if (!navigator.geolocation) return;
-    // Petición rápida
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const coords = [pos.coords.latitude, pos.coords.longitude];
@@ -248,7 +250,6 @@ const MapView = () => {
         try { localStorage.setItem("proalert_userpos", JSON.stringify(coords)); } catch {}
       },
       () => {
-        // Si rechaza permiso o falla, intentamos cargar la última ubicación conocida
         try {
           const saved = localStorage.getItem("proalert_userpos");
           if (saved) setUserPos(JSON.parse(saved));
@@ -257,7 +258,6 @@ const MapView = () => {
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
     );
 
-    // Y luego una ubicación más precisa en background
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const coords = [pos.coords.latitude, pos.coords.longitude];
@@ -273,74 +273,52 @@ const MapView = () => {
     };
   }, []);
 
-  // Escuchar evento del botón "Locate"
+  // Eventos personalizados
   useEffect(() => {
-    const handler = (e) => {
-      if (e.detail) setUserPos(e.detail);
-    };
+    const handler = (e) => { if (e.detail) setUserPos(e.detail); };
     window.addEventListener("proalert_locate", handler);
     return () => window.removeEventListener("proalert_locate", handler);
   }, []);
 
-  // Escuchar evento de "dibujar ruta"
   useEffect(() => {
     const drawRoute = (e) => {
-      if (!mapRef.current || !window.L || !e.detail) return;
-      const L = window.L;
+      if (!mapRef.current || !e.detail) return;
       const { coords, color = "#0077BB" } = e.detail;
       if (!coords || coords.length < 2) return;
-
-      // Borrar ruta anterior si existe
-      if (mapRef.current._routeLine) {
-        mapRef.current.removeLayer(mapRef.current._routeLine);
-      }
-      if (mapRef.current._routeStartMarker) {
-        mapRef.current.removeLayer(mapRef.current._routeStartMarker);
-      }
-      if (mapRef.current._routeEndMarker) {
-        mapRef.current.removeLayer(mapRef.current._routeEndMarker);
-      }
-
-      // Dibujar nueva ruta
-      const line = L.polyline(coords, {
-        color, weight: 6, opacity: 0.85, lineCap: "round", lineJoin: "round",
-      }).addTo(mapRef.current);
-      mapRef.current._routeLine = line;
-
-      // Marker inicio (verde)
-      const startIcon = L.divIcon({
-        html: `<div style="width:18px;height:18px;background:#10B981;border:3px solid white;border-radius:50%;box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>`,
-        className: "", iconSize: [18, 18], iconAnchor: [9, 9],
-      });
-      mapRef.current._routeStartMarker = L.marker(coords[0], { icon: startIcon }).addTo(mapRef.current);
-
-      // Marker destino (banderita)
-      const endIcon = L.divIcon({
-        html: `<div style="width:28px;height:28px;background:${color};border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:'Saira',sans-serif;font-weight:900;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">🏁</div>`,
-        className: "", iconSize: [28, 28], iconAnchor: [14, 14],
-      });
-      mapRef.current._routeEndMarker = L.marker(coords[coords.length - 1], { icon: endIcon }).addTo(mapRef.current);
-
-      // Ajustar el zoom para que se vea toda la ruta
-      mapRef.current.fitBounds(line.getBounds(), { padding: [40, 40] });
+      const map = mapRef.current;
+      const geojson = {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates: coords.map(c => [c[1], c[0]]) }
+      };
+      try {
+        if (map.getSource("proalert-route")) {
+          map.getSource("proalert-route").setData(geojson);
+          map.setPaintProperty("proalert-route-line", "line-color", color);
+        } else {
+          map.addSource("proalert-route", { type: "geojson", data: geojson });
+          map.addLayer({
+            id: "proalert-route-line",
+            type: "line",
+            source: "proalert-route",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": color, "line-width": 6, "line-opacity": 0.9 }
+          });
+        }
+        // Ajustar vista a la ruta
+        const lons = coords.map(c => c[1]);
+        const lats = coords.map(c => c[0]);
+        map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 60, duration: 800 });
+      } catch (err) { console.warn("draw route error:", err); }
     };
-
     const clearRoute = () => {
       if (!mapRef.current) return;
-      if (mapRef.current._routeLine) {
-        mapRef.current.removeLayer(mapRef.current._routeLine);
-        mapRef.current._routeLine = null;
-      }
-      if (mapRef.current._routeStartMarker) {
-        mapRef.current.removeLayer(mapRef.current._routeStartMarker);
-        mapRef.current._routeStartMarker = null;
-      }
-      if (mapRef.current._routeEndMarker) {
-        mapRef.current.removeLayer(mapRef.current._routeEndMarker);
-        mapRef.current._routeEndMarker = null;
-      }
+      const map = mapRef.current;
+      try {
+        if (map.getLayer("proalert-route-line")) map.removeLayer("proalert-route-line");
+        if (map.getSource("proalert-route")) map.removeSource("proalert-route");
+      } catch {}
     };
-
     window.addEventListener("proalert_drawroute", drawRoute);
     window.addEventListener("proalert_clearroute", clearRoute);
     return () => {
@@ -349,107 +327,118 @@ const MapView = () => {
     };
   }, []);
 
-  // Carga Leaflet desde CDN
+  // Cargar Mapbox GL JS desde CDN
   useEffect(() => {
-    if (window.L) { setReady(true); return; }
+    if (window.mapboxgl) { setReady(true); return; }
 
-    // Timeout: si Leaflet no carga en 5 seg, activar fallback SVG
     const timeout = setTimeout(() => {
-      if (!window.L) setFailed(true);
-    }, 5000);
+      if (!window.mapboxgl) setFailed(true);
+    }, 8000);
 
     // CSS
-    if (!document.querySelector('link[data-leaflet]')) {
+    if (!document.querySelector('link[data-mapbox]')) {
       const link = document.createElement("link");
       link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      link.setAttribute("data-leaflet", "true");
-      link.onerror = () => setFailed(true);
+      link.href = "https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css";
+      link.setAttribute("data-mapbox", "true");
       document.head.appendChild(link);
     }
 
     // JS
-    if (!document.querySelector('script[data-leaflet]')) {
+    if (!document.querySelector('script[data-mapbox]')) {
       const script = document.createElement("script");
-      script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-      script.setAttribute("data-leaflet", "true");
+      script.src = "https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js";
+      script.setAttribute("data-mapbox", "true");
       script.onload = () => { clearTimeout(timeout); setReady(true); };
       script.onerror = () => { clearTimeout(timeout); setFailed(true); };
       document.head.appendChild(script);
-    } else {
-      const check = setInterval(() => {
-        if (window.L) { clearInterval(check); clearTimeout(timeout); setReady(true); }
-      }, 100);
-      return () => { clearInterval(check); clearTimeout(timeout); };
     }
 
     return () => clearTimeout(timeout);
   }, []);
 
-  // Inicializa mapa cuando esté listo
+  // Inicializar mapa
   useEffect(() => {
     if (!ready || !containerRef.current || mapRef.current) return;
-    const L = window.L;
-    if (!L) { setFailed(true); return; }
+    const mapboxgl = window.mapboxgl;
+    if (!mapboxgl) { setFailed(true); return; }
 
     try {
-      const CENTER = [19.4015, -99.180];
+      mapboxgl.accessToken = MAPBOX_TOKEN;
+      const center = userPos ? [userPos[1], userPos[0]] : [-99.180, 19.4015];
 
-      const map = L.map(containerRef.current, {
-        zoomControl: false,
+      const map = new mapboxgl.Map({
+        container: containerRef.current,
+        style: "mapbox://styles/mapbox/dark-v11",
+        center,
+        zoom: 13,
         attributionControl: false,
-        scrollWheelZoom: true,
-        dragging: true,
-        tap: false, // En iOS Safari, tap:true causa conflictos con touchscroll
-        touchZoom: true,
-        doubleClickZoom: true,
-        boxZoom: false,
-        keyboard: false,
-        bounceAtZoomLimits: true,
-      }).setView(CENTER, 14);
-
-      // Aumentar el padding para mejor interacción táctil
-      map.getContainer().style.touchAction = "pan-x pan-y";
+        pitchWithRotate: false,
+        dragRotate: false,
+      });
 
       mapRef.current = map;
 
-      // Detectar si los tiles fallan también (red restringida)
-      let tilesFailed = 0;
-      const tileLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-        maxZoom: 19,
-        subdomains: "abcd",
-      });
-      tileLayer.on("tileerror", () => {
-        tilesFailed++;
-        if (tilesFailed > 5) setFailed(true);
-      });
-      tileLayer.addTo(map);
-
-      // Zonas semáforo
-      L.circle([19.4055, -99.174], { color: "#EF4444", fillColor: "#EF4444", fillOpacity: 0.35, stroke: false, radius: 520 }).addTo(map);
-      L.circle([19.3985, -99.168], { color: "#FBBF24", fillColor: "#FBBF24", fillOpacity: 0.3, stroke: false, radius: 320 }).addTo(map);
-      L.circle([19.3935, -99.188], { color: "#22C55E", fillColor: "#22C55E", fillOpacity: 0.32, stroke: false, radius: 560 }).addTo(map);
-
-      const addIncidentMarker = (lat, lng, num, color) => {
-        const icon = L.divIcon({
-          html: `<div style="width:28px;height:28px;background:${color};border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:'Saira',sans-serif;font-weight:900;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">${num}</div>`,
-          className: "", iconSize: [28, 28], iconAnchor: [14, 14],
+      map.on("load", () => {
+        // Zonas semáforo como capas
+        const zones = [
+          { id: "red", center: [-99.174, 19.4055], radius: 520, color: "#EF4444", opacity: 0.35 },
+          { id: "amber", center: [-99.168, 19.3985], radius: 320, color: "#FBBF24", opacity: 0.3 },
+          { id: "green", center: [-99.188, 19.3935], radius: 560, color: "#22C55E", opacity: 0.32 },
+        ];
+        zones.forEach(z => {
+          const points = 64;
+          const coords = [];
+          const km = z.radius / 1000;
+          for (let i = 0; i < points; i++) {
+            const angle = (i / points) * 2 * Math.PI;
+            const dx = km * Math.cos(angle) / (111.32 * Math.cos(z.center[1] * Math.PI / 180));
+            const dy = km * Math.sin(angle) / 110.574;
+            coords.push([z.center[0] + dx, z.center[1] + dy]);
+          }
+          coords.push(coords[0]);
+          map.addSource(`zone-${z.id}`, {
+            type: "geojson",
+            data: { type: "Feature", geometry: { type: "Polygon", coordinates: [coords] } }
+          });
+          map.addLayer({
+            id: `zone-${z.id}-fill`,
+            type: "fill",
+            source: `zone-${z.id}`,
+            paint: { "fill-color": z.color, "fill-opacity": z.opacity }
+          });
         });
-        L.marker([lat, lng], { icon }).addTo(map);
-      };
-      addIncidentMarker(19.4070, -99.1735, 4, "#EF4444");
-      addIncidentMarker(19.4020, -99.1715, 2, "#EF4444");
-      addIncidentMarker(19.3990, -99.1670, 3, "#FBBF24");
 
-      const userIcon = L.divIcon({
-        html: `<div style="position:relative;width:22px;height:22px;"><div style="position:absolute;inset:-8px;background:#0077BB;opacity:0.35;border-radius:50%;animation:pulseRing 1.8s ease-out infinite;"></div><div style="position:absolute;inset:0;background:#0077BB;border:3px solid white;border-radius:50%;box-shadow:0 0 20px #0077BB,0 4px 12px rgba(0,0,0,0.5);"></div></div><style>@keyframes pulseRing{0%{transform:scale(0.6);opacity:0.6;}100%{transform:scale(2.4);opacity:0;}}</style>`,
-        className: "", iconSize: [22, 22], iconAnchor: [11, 11],
+        // Marcadores de incidentes
+        const incidents = [
+          { lng: -99.1735, lat: 19.4070, num: 4, color: "#EF4444" },
+          { lng: -99.1715, lat: 19.4020, num: 2, color: "#EF4444" },
+          { lng: -99.1670, lat: 19.3990, num: 3, color: "#FBBF24" },
+        ];
+        incidents.forEach(inc => {
+          const el = document.createElement("div");
+          el.style.cssText = `width:28px;height:28px;background:${inc.color};border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:'Saira',sans-serif;font-weight:900;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.5);`;
+          el.textContent = inc.num;
+          new mapboxgl.Marker(el).setLngLat([inc.lng, inc.lat]).addTo(map);
+        });
+
+        // Marcador del usuario
+        const userEl = document.createElement("div");
+        userEl.style.cssText = "position:relative;width:22px;height:22px;";
+        userEl.innerHTML = `<div style="position:absolute;inset:-8px;background:#0077BB;opacity:0.35;border-radius:50%;animation:pulseRing 1.8s ease-out infinite;"></div><div style="position:absolute;inset:0;background:#0077BB;border:3px solid white;border-radius:50%;box-shadow:0 0 20px #0077BB,0 4px 12px rgba(0,0,0,0.5);"></div>`;
+        if (!document.querySelector("style[data-pulse]")) {
+          const st = document.createElement("style");
+          st.setAttribute("data-pulse", "true");
+          st.textContent = "@keyframes pulseRing{0%{transform:scale(0.6);opacity:0.6;}100%{transform:scale(2.4);opacity:0;}}";
+          document.head.appendChild(st);
+        }
+        const userCoords = userPos ? [userPos[1], userPos[0]] : [-99.180, 19.4015];
+        userMarkerRef.current = new mapboxgl.Marker(userEl).setLngLat(userCoords).addTo(map);
       });
-      // Si hay ubicación real, úsala; si no, usa una por defecto (Escandón CDMX)
-      const userCoords = userPos || [19.4015, -99.180];
-      userMarkerRef.current = L.marker(userCoords, { icon: userIcon }).addTo(map);
-      // Si tenemos ubicación real, centra el mapa ahí
-      if (userPos) map.setView(userCoords, 14);
+
+      map.on("error", (e) => {
+        console.warn("Mapbox error:", e?.error?.message || e);
+      });
     } catch (err) {
       console.warn("Map init error:", err);
       setFailed(true);
@@ -463,105 +452,38 @@ const MapView = () => {
     };
   }, [ready]);
 
-  // Cuando cambia userPos, mover el marker y centrar el mapa
+  // Actualizar marker cuando cambia ubicación
   useEffect(() => {
     if (!userPos || !mapRef.current || !userMarkerRef.current) return;
     try {
-      userMarkerRef.current.setLatLng(userPos);
-      mapRef.current.setView(userPos, mapRef.current.getZoom() || 14);
+      userMarkerRef.current.setLngLat([userPos[1], userPos[0]]);
+      mapRef.current.flyTo({ center: [userPos[1], userPos[0]], zoom: mapRef.current.getZoom() || 13, duration: 600 });
     } catch {}
   }, [userPos]);
 
-  // FALLBACK: Mapa SVG estilizado si Leaflet falla
+  // FALLBACK SVG si Mapbox falla
   if (failed) {
     return (
       <div className="absolute inset-0 overflow-hidden" style={{ background: "#1E2C4A", zIndex: 0 }}>
         <svg width="100%" height="100%" viewBox="0 0 400 900" preserveAspectRatio="xMidYMid slice" style={{ display: "block", position: "absolute", inset: 0 }}>
           <defs>
-            <radialGradient id="redZ" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#EF4444" stopOpacity="0.75" />
-              <stop offset="55%" stopColor="#EF4444" stopOpacity="0.45" />
-              <stop offset="100%" stopColor="#EF4444" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="amberZ" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#FBBF24" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="#FBBF24" stopOpacity="0" />
-            </radialGradient>
-            <radialGradient id="greenZ" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#22C55E" stopOpacity="0.65" />
-              <stop offset="100%" stopColor="#22C55E" stopOpacity="0" />
-            </radialGradient>
+            <radialGradient id="redZ" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#EF4444" stopOpacity="0.75" /><stop offset="100%" stopColor="#EF4444" stopOpacity="0" /></radialGradient>
+            <radialGradient id="amberZ" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#FBBF24" stopOpacity="0.65" /><stop offset="100%" stopColor="#FBBF24" stopOpacity="0" /></radialGradient>
+            <radialGradient id="greenZ" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#22C55E" stopOpacity="0.65" /><stop offset="100%" stopColor="#22C55E" stopOpacity="0" /></radialGradient>
           </defs>
           <rect width="400" height="900" fill="#1E2C4A" />
-          {/* Bloques de "manzanas" */}
-          <g opacity="0.5">
-            {[[0,0,100,120],[115,0,155,160],[290,0,120,170],[0,195,105,180],[120,200,150,170],[290,195,120,180],[0,395,105,220],[120,385,155,80],[120,480,160,125],[295,395,115,220],[0,655,105,130],[120,660,155,120],[295,660,115,120]].map((r, i) => (
-              <rect key={i} x={r[0]} y={r[1]} width={r[2]} height={r[3]} fill="#243558" />
-            ))}
-          </g>
-          {/* Parques */}
-          <path d="M 25 100 Q 60 88 100 118 Q 118 152 92 180 Q 55 192 30 168 Q 15 138 25 100 Z" fill="#1F4D38" />
-          <path d="M 280 715 L 365 700 L 375 770 L 290 780 Z" fill="#1F4D38" />
-          {/* Carretera diagonal */}
           <path d="M -20 510 L 200 460 L 420 420" stroke="#5B6F94" strokeWidth="14" fill="none" />
-          <path d="M -20 510 L 200 460 L 420 420" stroke="#475A82" strokeWidth="11" fill="none" />
-          <path d="M -20 510 L 200 460 L 420 420" stroke="#F4D03F" strokeWidth="1" fill="none" strokeDasharray="6 6" opacity="0.6" />
-          {/* Avenidas verticales */}
           <path d="M 92 0 L 108 900" stroke="#5B6F94" strokeWidth="8" />
-          <path d="M 92 0 L 108 900" stroke="#3D5078" strokeWidth="5" />
           <path d="M 268 0 L 290 900" stroke="#5B6F94" strokeWidth="8" />
-          <path d="M 268 0 L 290 900" stroke="#3D5078" strokeWidth="5" />
-          {/* Avenidas horizontales */}
-          <path d="M 0 300 L 400 280" stroke="#5B6F94" strokeWidth="5" />
-          <path d="M 0 300 L 400 280" stroke="#3D5078" strokeWidth="3" />
-          <path d="M 0 630 L 400 645" stroke="#5B6F94" strokeWidth="5" />
-          <path d="M 0 630 L 400 645" stroke="#3D5078" strokeWidth="3" />
-          <path d="M 0 800 L 400 815" stroke="#5B6F94" strokeWidth="4" />
-          {/* Calles secundarias */}
-          {[60, 140, 175, 210, 235, 350, 385, 410, 545, 565, 595, 685, 720, 755, 825, 860].map((y, i) => (
-            <path key={`h-${i}`} d={`M 0 ${y} L 400 ${y - 4}`} stroke="#3D5078" strokeWidth="1.8" />
-          ))}
-          {[30, 55, 75, 140, 175, 200, 220, 245, 305, 330, 355, 380].map((x, i) => (
-            <path key={`v-${i}`} d={`M ${x} 0 L ${x + 6} 900`} stroke="#3D5078" strokeWidth="1.8" />
-          ))}
-          {/* Zonas semáforo */}
           <ellipse cx="265" cy="295" rx="135" ry="125" fill="url(#redZ)" />
           <ellipse cx="305" cy="500" rx="85" ry="75" fill="url(#amberZ)" />
           <ellipse cx="125" cy="710" rx="165" ry="155" fill="url(#greenZ)" />
-          {/* Etiquetas de colonias */}
-          <text x="55" y="158" fill="#E2E8F0" fontSize="13" fontWeight="800" fontFamily="Saira" letterSpacing="0.5">SAN MIGUEL</text>
-          <text x="35" y="174" fill="#E2E8F0" fontSize="13" fontWeight="800" fontFamily="Saira" letterSpacing="0.5">CHAPULTEPEC</text>
-          <text x="215" y="325" fill="#F1F5F9" fontSize="16" fontWeight="800" fontFamily="Saira" letterSpacing="1">ESCANDÓN</text>
-          <text x="30" y="445" fill="#E2E8F0" fontSize="14" fontWeight="800" fontFamily="Saira" letterSpacing="0.5">TACUBAYA</text>
-          <text x="295" y="570" fill="#E2E8F0" fontSize="13" fontWeight="800" fontFamily="Saira" letterSpacing="0.5">NÁPOLES</text>
-          <text x="55" y="785" fill="#E2E8F0" fontSize="13" fontWeight="800" fontFamily="Saira" letterSpacing="0.5">SAN PEDRO</text>
-          <text x="25" y="800" fill="#E2E8F0" fontSize="13" fontWeight="800" fontFamily="Saira" letterSpacing="0.5">DE LOS PINOS</text>
-          {/* Marcadores de incidentes */}
-          <g>
-            <circle cx="270" cy="270" r="15" fill="#EF4444" stroke="white" strokeWidth="3" />
-            <text x="270" y="275" textAnchor="middle" fontSize="12" fontWeight="900" fill="white" fontFamily="Saira">4</text>
-          </g>
-          <g>
-            <circle cx="235" cy="358" r="13" fill="#EF4444" stroke="white" strokeWidth="3" />
-            <text x="235" y="363" textAnchor="middle" fontSize="11" fontWeight="900" fill="white" fontFamily="Saira">2</text>
-          </g>
-          <g>
-            <circle cx="305" cy="505" r="13" fill="#FBBF24" stroke="white" strokeWidth="3" />
-            <text x="305" y="510" textAnchor="middle" fontSize="11" fontWeight="900" fill="white" fontFamily="Saira">3</text>
-          </g>
-          {/* Usuario pulsante */}
-          <g>
-            <circle cx="195" cy="520" r="22" fill="#0077BB" opacity="0.3">
-              <animate attributeName="r" values="14;28;14" dur="2s" repeatCount="indefinite" />
-              <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite" />
-            </circle>
-            <circle cx="195" cy="520" r="14" fill="#0077BB" opacity="0.45" />
-            <circle cx="195" cy="520" r="11" fill="#0077BB" stroke="white" strokeWidth="3.5" />
-          </g>
+          <text x="215" y="325" fill="#F1F5F9" fontSize="16" fontWeight="800" fontFamily="Saira">ESCANDÓN</text>
+          <text x="30" y="445" fill="#E2E8F0" fontSize="14" fontWeight="800" fontFamily="Saira">TACUBAYA</text>
+          <text x="295" y="570" fill="#E2E8F0" fontSize="13" fontWeight="800" fontFamily="Saira">NÁPOLES</text>
+          <circle cx="195" cy="520" r="11" fill="#0077BB" stroke="white" strokeWidth="3.5" />
         </svg>
-        {/* Indicador modo offline */}
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full flex items-center gap-1.5"
-          style={{ background: `${C.amber}DD`, boxShadow: `0 4px 12px ${C.amber}66`, zIndex: 2 }}>
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full flex items-center gap-1.5" style={{ background: `${C.amber}DD`, zIndex: 2 }}>
           <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           <span className="text-white text-[9px] font-display font-bold uppercase tracking-widest">Modo offline</span>
         </div>
@@ -579,13 +501,10 @@ const MapView = () => {
         </div>
       )}
       <style>{`
-        .leaflet-container {
-          background: #0F1729 !important;
-          font-family: 'DM Sans', sans-serif !important;
-          outline: none !important;
-        }
-        .leaflet-tile { filter: brightness(0.95) contrast(1.05); }
-        .leaflet-control-attribution { display: none !important; }
+        .mapboxgl-canvas { outline: none !important; }
+        .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-logo { display: none !important; }
+        .mapboxgl-canvas-container { cursor: grab; }
+        .mapboxgl-canvas-container.mapboxgl-interactive:active { cursor: grabbing; }
       `}</style>
     </div>
   );
@@ -3062,6 +2981,8 @@ const RouteScreen = ({ onBack, onNav }) => {
   const [searched, setSearched] = useState(false);
   const [searching, setSearching] = useState(false);
   const [userLoc, setUserLoc] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [destCoords, setDestCoords] = useState(null);
 
   useEffect(() => {
     try {
@@ -3075,6 +2996,33 @@ const RouteScreen = ({ onBack, onNav }) => {
       { enableHighAccuracy: false, timeout: 5000 }
     );
   }, []);
+
+  // Autocompletado con Mapbox Geocoding API
+  useEffect(() => {
+    if (!destination || destination.length < 3 || destCoords) {
+      setSuggestions([]);
+      return;
+    }
+    const controller = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const proximityParam = userLoc ? `&proximity=${userLoc[1]},${userLoc[0]}` : "";
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(destination)}.json?access_token=${MAPBOX_TOKEN}&country=mx&limit=5&language=es${proximityParam}`;
+        const res = await fetch(url, { signal: controller.signal });
+        const data = await res.json();
+        if (data.features) {
+          setSuggestions(data.features.map(f => ({
+            name: f.text || f.place_name,
+            full: f.place_name,
+            coords: [f.center[1], f.center[0]], // [lat, lng]
+          })));
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") console.warn("geocode error:", err);
+      }
+    }, 300);
+    return () => { clearTimeout(t); controller.abort(); };
+  }, [destination, userLoc, destCoords]);
 
   const popular = [
     { n: "Mi casa", d: "Calz. de Tlalpan 1234", icon: Home },
@@ -3093,10 +3041,18 @@ const RouteScreen = ({ onBack, onNav }) => {
     return () => clearTimeout(t);
   }, [searching]);
 
-  const search = (place) => {
+  const search = (place, coords = null) => {
     if (!place || !place.trim()) return;
     setDestination(place);
+    setDestCoords(coords);
+    setSuggestions([]);
     setSearching(true);
+  };
+
+  const pickSuggestion = (sug) => {
+    setDestination(sug.name);
+    setDestCoords(sug.coords);
+    setSuggestions([]);
   };
 
   // Coordenadas de destinos populares (preset)
@@ -3121,7 +3077,7 @@ const RouteScreen = ({ onBack, onNav }) => {
 
   // Calcular rutas dinámicas según destino real
   const startCoord = userLoc || [19.4015, -99.180];
-  const endCoord = destinationCoords[destination] || [startCoord[0] + 0.025, startCoord[1] + 0.02];
+  const endCoord = destCoords || destinationCoords[destination] || [startCoord[0] + 0.025, startCoord[1] + 0.02];
   const distKm = haversine(startCoord, endCoord);
   // Multiplicadores: ruta rápida 1.15x línea recta, ruta segura 1.35x (más vueltas)
   const fastDistKm = Math.max(0.5, distKm * 1.15);
@@ -3159,38 +3115,32 @@ const RouteScreen = ({ onBack, onNav }) => {
   };
 
   const startNav = async () => {
-    // Punto de partida: ubicación del usuario o default Escandón
+    // Punto de partida: ubicación del usuario o default Escandón CDMX
     const start = userLoc || [19.4015, -99.180];
-    // Destino: si es un preset usamos sus coords, si no, generamos uno cercano
-    let end = destinationCoords[destination];
+    // Destino: prioridad 1) coords del autocompletado, 2) preset, 3) cerca del usuario
+    let end = destCoords || destinationCoords[destination];
     if (!end) {
-      // Para destinos escritos manualmente, generamos un punto cercano simulado
-      // En producción real usaríamos un geocoder (ej: Nominatim)
       end = [start[0] + 0.025, start[1] + 0.02];
     }
 
     const color = selected === "safe" ? "#10B981" : "#0077BB";
+    const profile = selected === "safe" ? "driving" : "driving-traffic";
     toast(`Calculando ruta ${selected === "safe" ? "segura" : "rápida"}...`);
 
     try {
-      // OSRM público: ruta real por calles
-      const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+      // Mapbox Directions API - ruta real siguiendo calles con tráfico
+      const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start[1]},${start[0]};${end[1]},${end[0]}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
       const res = await fetch(url);
       const data = await res.json();
 
       if (data.routes && data.routes[0]) {
         const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-
-        // Si es la ruta "segura", desviamos sutilmente añadiendo waypoints
-        // Para esta demo, usamos la misma ruta pero con color verde para "segura"
         window.dispatchEvent(new CustomEvent("proalert_drawroute", {
           detail: { coords, color }
         }));
-
-        toast(`Ruta ${selected === "safe" ? "segura" : "rápida"} trazada en el mapa`);
+        toast(`Ruta ${selected === "safe" ? "segura" : "rápida"} trazada · ${(data.routes[0].distance/1000).toFixed(1)} km`);
         setTimeout(() => onNav("home"), 1000);
       } else {
-        // Fallback: línea recta entre puntos
         window.dispatchEvent(new CustomEvent("proalert_drawroute", {
           detail: { coords: [start, end], color }
         }));
@@ -3198,12 +3148,11 @@ const RouteScreen = ({ onBack, onNav }) => {
         setTimeout(() => onNav("home"), 1000);
       }
     } catch (err) {
-      console.warn("OSRM error:", err);
-      // Fallback offline: línea recta
+      console.warn("Directions API error:", err);
       window.dispatchEvent(new CustomEvent("proalert_drawroute", {
         detail: { coords: [start, end], color }
       }));
-      toast(`Ruta trazada (sin conexión a servicio)`);
+      toast(`Ruta trazada (sin conexión)`);
       setTimeout(() => onNav("home"), 1000);
     }
   };
@@ -3219,12 +3168,30 @@ const RouteScreen = ({ onBack, onNav }) => {
             style={{ background: C.card, border: `1.5px solid ${C.blue}` }}>
             <div className="w-2 h-2 rounded-full shrink-0" style={{ background: C.blue }} />
             <input value={destination}
-              onChange={e => setDestination(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") search(destination); }}
+              onChange={e => { setDestination(e.target.value); setDestCoords(null); }}
+              onKeyDown={e => { if (e.key === "Enter") search(destination, destCoords); }}
               placeholder="¿A dónde vas?"
               className="flex-1 min-w-0 bg-transparent text-white text-sm outline-none font-body placeholder:text-slate-500" />
-            {destination && <button onClick={() => setDestination("")} className="shrink-0"><X size={14} color={C.muted} /></button>}
+            {destination && <button onClick={() => { setDestination(""); setSuggestions([]); setDestCoords(null); }} className="shrink-0"><X size={14} color={C.muted} /></button>}
           </div>
+
+          {/* Sugerencias autocompletado Mapbox */}
+          {suggestions.length > 0 && (
+            <div className="rounded-2xl mb-2 overflow-hidden" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+              {suggestions.map((sug, i) => (
+                <button key={i} onClick={() => pickSuggestion(sug)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-all hover:opacity-80"
+                  style={{ borderBottom: i < suggestions.length - 1 ? `1px solid ${C.border}` : "none" }}>
+                  <MapPin size={14} color={C.blue} className="shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-display font-bold text-white truncate">{sug.name}</p>
+                    <p className="text-[10px] font-body truncate" style={{ color: C.muted }}>{sug.full}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex items-center gap-3 px-4 py-3 rounded-2xl mb-4"
             style={{ background: C.card, border: `1px solid ${C.border}` }}>
             <div className="w-2 h-2 rounded-full shrink-0" style={{ background: userLoc ? C.green : C.amber }} />
@@ -3235,7 +3202,7 @@ const RouteScreen = ({ onBack, onNav }) => {
             <Crosshair size={14} color={userLoc ? C.green : C.muted} />
           </div>
 
-          <button onClick={() => search(destination)} disabled={!destination.trim() || searching}
+          <button onClick={() => search(destination, destCoords)} disabled={!destination.trim() || searching}
             className="w-full py-4 rounded-2xl font-display font-bold text-white text-sm uppercase tracking-widest mb-5 flex items-center justify-center gap-2 transition-all"
             style={{
               background: destination.trim() && !searching ? C.blue : C.card,
