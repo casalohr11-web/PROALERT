@@ -282,6 +282,73 @@ const MapView = () => {
     return () => window.removeEventListener("proalert_locate", handler);
   }, []);
 
+  // Escuchar evento de "dibujar ruta"
+  useEffect(() => {
+    const drawRoute = (e) => {
+      if (!mapRef.current || !window.L || !e.detail) return;
+      const L = window.L;
+      const { coords, color = "#0077BB" } = e.detail;
+      if (!coords || coords.length < 2) return;
+
+      // Borrar ruta anterior si existe
+      if (mapRef.current._routeLine) {
+        mapRef.current.removeLayer(mapRef.current._routeLine);
+      }
+      if (mapRef.current._routeStartMarker) {
+        mapRef.current.removeLayer(mapRef.current._routeStartMarker);
+      }
+      if (mapRef.current._routeEndMarker) {
+        mapRef.current.removeLayer(mapRef.current._routeEndMarker);
+      }
+
+      // Dibujar nueva ruta
+      const line = L.polyline(coords, {
+        color, weight: 6, opacity: 0.85, lineCap: "round", lineJoin: "round",
+      }).addTo(mapRef.current);
+      mapRef.current._routeLine = line;
+
+      // Marker inicio (verde)
+      const startIcon = L.divIcon({
+        html: `<div style="width:18px;height:18px;background:#10B981;border:3px solid white;border-radius:50%;box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>`,
+        className: "", iconSize: [18, 18], iconAnchor: [9, 9],
+      });
+      mapRef.current._routeStartMarker = L.marker(coords[0], { icon: startIcon }).addTo(mapRef.current);
+
+      // Marker destino (banderita)
+      const endIcon = L.divIcon({
+        html: `<div style="width:28px;height:28px;background:${color};border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:'Saira',sans-serif;font-weight:900;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.5);">🏁</div>`,
+        className: "", iconSize: [28, 28], iconAnchor: [14, 14],
+      });
+      mapRef.current._routeEndMarker = L.marker(coords[coords.length - 1], { icon: endIcon }).addTo(mapRef.current);
+
+      // Ajustar el zoom para que se vea toda la ruta
+      mapRef.current.fitBounds(line.getBounds(), { padding: [40, 40] });
+    };
+
+    const clearRoute = () => {
+      if (!mapRef.current) return;
+      if (mapRef.current._routeLine) {
+        mapRef.current.removeLayer(mapRef.current._routeLine);
+        mapRef.current._routeLine = null;
+      }
+      if (mapRef.current._routeStartMarker) {
+        mapRef.current.removeLayer(mapRef.current._routeStartMarker);
+        mapRef.current._routeStartMarker = null;
+      }
+      if (mapRef.current._routeEndMarker) {
+        mapRef.current.removeLayer(mapRef.current._routeEndMarker);
+        mapRef.current._routeEndMarker = null;
+      }
+    };
+
+    window.addEventListener("proalert_drawroute", drawRoute);
+    window.addEventListener("proalert_clearroute", clearRoute);
+    return () => {
+      window.removeEventListener("proalert_drawroute", drawRoute);
+      window.removeEventListener("proalert_clearroute", clearRoute);
+    };
+  }, []);
+
   // Carga Leaflet desde CDN
   useEffect(() => {
     if (window.L) { setReady(true); return; }
@@ -333,8 +400,16 @@ const MapView = () => {
         attributionControl: false,
         scrollWheelZoom: true,
         dragging: true,
-        tap: true,
+        tap: false, // En iOS Safari, tap:true causa conflictos con touchscroll
+        touchZoom: true,
+        doubleClickZoom: true,
+        boxZoom: false,
+        keyboard: false,
+        bounceAtZoomLimits: true,
       }).setView(CENTER, 14);
+
+      // Aumentar el padding para mejor interacción táctil
+      map.getContainer().style.touchAction = "pan-x pan-y";
 
       mapRef.current = map;
 
@@ -3042,9 +3117,62 @@ const RouteScreen = ({ onBack, onNav }) => {
     },
   };
 
-  const startNav = () => {
-    toast(`Navegación iniciada · Ruta ${selected === "fast" ? "más rápida" : "más segura"}`);
-    setTimeout(() => onNav("home"), 800);
+  // Coordenadas de destinos populares (preset)
+  const destinationCoords = {
+    "Mi casa": [19.3590, -99.1422],
+    "Trabajo": [19.4274, -99.1670],
+    "Plaza Antara": [19.4407, -99.2055],
+    "Aeropuerto CDMX": [19.4361, -99.0719],
+  };
+
+  const startNav = async () => {
+    // Punto de partida: ubicación del usuario o default Escandón
+    const start = userLoc || [19.4015, -99.180];
+    // Destino: si es un preset usamos sus coords, si no, generamos uno cercano
+    let end = destinationCoords[destination];
+    if (!end) {
+      // Para destinos escritos manualmente, generamos un punto cercano simulado
+      // En producción real usaríamos un geocoder (ej: Nominatim)
+      end = [start[0] + 0.025, start[1] + 0.02];
+    }
+
+    const color = selected === "safe" ? "#10B981" : "#0077BB";
+    toast(`Calculando ruta ${selected === "safe" ? "segura" : "rápida"}...`);
+
+    try {
+      // OSRM público: ruta real por calles
+      const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${end[1]},${end[0]}?overview=full&geometries=geojson`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (data.routes && data.routes[0]) {
+        const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+
+        // Si es la ruta "segura", desviamos sutilmente añadiendo waypoints
+        // Para esta demo, usamos la misma ruta pero con color verde para "segura"
+        window.dispatchEvent(new CustomEvent("proalert_drawroute", {
+          detail: { coords, color }
+        }));
+
+        toast(`Ruta ${selected === "safe" ? "segura" : "rápida"} trazada en el mapa`);
+        setTimeout(() => onNav("home"), 1000);
+      } else {
+        // Fallback: línea recta entre puntos
+        window.dispatchEvent(new CustomEvent("proalert_drawroute", {
+          detail: { coords: [start, end], color }
+        }));
+        toast(`Ruta trazada (modo simple)`);
+        setTimeout(() => onNav("home"), 1000);
+      }
+    } catch (err) {
+      console.warn("OSRM error:", err);
+      // Fallback offline: línea recta
+      window.dispatchEvent(new CustomEvent("proalert_drawroute", {
+        detail: { coords: [start, end], color }
+      }));
+      toast(`Ruta trazada (sin conexión a servicio)`);
+      setTimeout(() => onNav("home"), 1000);
+    }
   };
 
   return (
