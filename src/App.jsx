@@ -296,31 +296,48 @@ const MapView = () => {
         properties: {},
         geometry: { type: "LineString", coordinates: coords.map(c => [c[1], c[0]]) }
       };
-      try {
-        if (map.getSource("proalert-route")) {
-          map.getSource("proalert-route").setData(geojson);
-          map.setPaintProperty("proalert-route-line", "line-color", color);
-        } else {
+      const doDraw = () => {
+        try {
+          // Limpiar capas previas
+          if (map.getLayer("proalert-route-line")) map.removeLayer("proalert-route-line");
+          if (map.getLayer("proalert-route-outline")) map.removeLayer("proalert-route-outline");
+          if (map.getSource("proalert-route")) map.removeSource("proalert-route");
+
           map.addSource("proalert-route", { type: "geojson", data: geojson });
+          // Borde blanco para destacar
+          map.addLayer({
+            id: "proalert-route-outline",
+            type: "line",
+            source: "proalert-route",
+            layout: { "line-join": "round", "line-cap": "round" },
+            paint: { "line-color": "#FFFFFF", "line-width": 10, "line-opacity": 0.5 }
+          });
+          // Línea principal
           map.addLayer({
             id: "proalert-route-line",
             type: "line",
             source: "proalert-route",
             layout: { "line-join": "round", "line-cap": "round" },
-            paint: { "line-color": color, "line-width": 6, "line-opacity": 0.9 }
+            paint: { "line-color": color, "line-width": 6, "line-opacity": 1 }
           });
-        }
-        // Ajustar vista a la ruta
-        const lons = coords.map(c => c[1]);
-        const lats = coords.map(c => c[0]);
-        map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: 60, duration: 800 });
-      } catch (err) { console.warn("draw route error:", err); }
+          // Ajustar vista a la ruta con padding generoso
+          const lons = coords.map(c => c[1]);
+          const lats = coords.map(c => c[0]);
+          map.fitBounds(
+            [[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]],
+            { padding: { top: 120, bottom: 200, left: 60, right: 60 }, duration: 1000, maxZoom: 15 }
+          );
+        } catch (err) { console.warn("draw route error:", err); }
+      };
+      if (map.isStyleLoaded()) doDraw();
+      else map.once("load", doDraw);
     };
     const clearRoute = () => {
       if (!mapRef.current) return;
       const map = mapRef.current;
       try {
         if (map.getLayer("proalert-route-line")) map.removeLayer("proalert-route-line");
+        if (map.getLayer("proalert-route-outline")) map.removeLayer("proalert-route-outline");
         if (map.getSource("proalert-route")) map.removeSource("proalert-route");
       } catch {}
     };
@@ -406,49 +423,7 @@ const MapView = () => {
       };
 
       map.on("load", () => {
-        // Zonas semáforo como capas
-        const zones = [
-          { id: "red", center: [-99.174, 19.4055], radius: 520, color: "#EF4444", opacity: 0.35 },
-          { id: "amber", center: [-99.168, 19.3985], radius: 320, color: "#FBBF24", opacity: 0.3 },
-          { id: "green", center: [-99.188, 19.3935], radius: 560, color: "#22C55E", opacity: 0.32 },
-        ];
-        zones.forEach(z => {
-          const points = 64;
-          const coords = [];
-          const km = z.radius / 1000;
-          for (let i = 0; i < points; i++) {
-            const angle = (i / points) * 2 * Math.PI;
-            const dx = km * Math.cos(angle) / (111.32 * Math.cos(z.center[1] * Math.PI / 180));
-            const dy = km * Math.sin(angle) / 110.574;
-            coords.push([z.center[0] + dx, z.center[1] + dy]);
-          }
-          coords.push(coords[0]);
-          map.addSource(`zone-${z.id}`, {
-            type: "geojson",
-            data: { type: "Feature", geometry: { type: "Polygon", coordinates: [coords] } }
-          });
-          map.addLayer({
-            id: `zone-${z.id}-fill`,
-            type: "fill",
-            source: `zone-${z.id}`,
-            paint: { "fill-color": z.color, "fill-opacity": z.opacity }
-          });
-        });
-
-        // Marcadores de incidentes
-        const incidents = [
-          { lng: -99.1735, lat: 19.4070, num: 4, color: "#EF4444" },
-          { lng: -99.1715, lat: 19.4020, num: 2, color: "#EF4444" },
-          { lng: -99.1670, lat: 19.3990, num: 3, color: "#FBBF24" },
-        ];
-        incidents.forEach(inc => {
-          const el = document.createElement("div");
-          el.style.cssText = `width:28px;height:28px;background:${inc.color};border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:'Saira',sans-serif;font-weight:900;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.5);`;
-          el.textContent = inc.num;
-          new mapboxgl.Marker(el).setLngLat([inc.lng, inc.lat]).addTo(map);
-        });
-
-        // Marcador del usuario
+        // Marcador del usuario (las zonas e incidentes se generan en useEffect aparte cuando llega userPos)
         const userEl = document.createElement("div");
         userEl.style.cssText = "position:relative;width:22px;height:22px;";
         userEl.innerHTML = `<div style="position:absolute;inset:-8px;background:#0077BB;opacity:0.35;border-radius:50%;animation:pulseRing 1.8s ease-out infinite;"></div><div style="position:absolute;inset:0;background:#0077BB;border:3px solid white;border-radius:50%;box-shadow:0 0 20px #0077BB,0 4px 12px rgba(0,0,0,0.5);"></div>`;
@@ -479,13 +454,81 @@ const MapView = () => {
     };
   }, [ready]);
 
-  // Actualizar marker cuando cambia ubicación
+  // Actualizar marker cuando cambia ubicación (sin recentrar mapa - el usuario explora libre)
   useEffect(() => {
     if (!userPos || !mapRef.current || !userMarkerRef.current) return;
     try {
       userMarkerRef.current.setLngLat([userPos[1], userPos[0]]);
-      mapRef.current.flyTo({ center: [userPos[1], userPos[0]], zoom: mapRef.current.getZoom() || 13, duration: 600 });
     } catch {}
+  }, [userPos]);
+
+  // Centrado inicial UNA SOLA VEZ cuando llega userPos
+  const initialCenteredRef = useRef(false);
+  useEffect(() => {
+    if (!userPos || !mapRef.current || initialCenteredRef.current) return;
+    try {
+      mapRef.current.flyTo({ center: [userPos[1], userPos[0]], zoom: 14, duration: 1200 });
+      initialCenteredRef.current = true;
+    } catch {}
+  }, [userPos]);
+
+  // Generar zonas e incidentes ALREDEDOR del usuario (una sola vez)
+  const zonesGeneratedRef = useRef(false);
+  useEffect(() => {
+    if (!userPos || !mapRef.current || zonesGeneratedRef.current) return;
+    const map = mapRef.current;
+    if (!map.isStyleLoaded()) {
+      const t = setTimeout(() => zonesGeneratedRef.current = false, 300);
+      return () => clearTimeout(t);
+    }
+    try {
+      const [lat, lng] = userPos;
+      // Offsets en grados (aprox 1km ≈ 0.009 grados lat, 0.0095 grados lng en CDMX)
+      const zones = [
+        { id: "user-red", center: [lng + 0.011, lat + 0.008], radius: 450, color: "#EF4444", opacity: 0.32 },
+        { id: "user-amber", center: [lng - 0.008, lat + 0.012], radius: 380, color: "#FBBF24", opacity: 0.28 },
+        { id: "user-green", center: [lng - 0.013, lat - 0.010], radius: 520, color: "#22C55E", opacity: 0.30 },
+      ];
+      zones.forEach(z => {
+        if (map.getSource(`zone-${z.id}`)) return;
+        const points = 64;
+        const coords = [];
+        const km = z.radius / 1000;
+        for (let i = 0; i < points; i++) {
+          const angle = (i / points) * 2 * Math.PI;
+          const dx = km * Math.cos(angle) / (111.32 * Math.cos(z.center[1] * Math.PI / 180));
+          const dy = km * Math.sin(angle) / 110.574;
+          coords.push([z.center[0] + dx, z.center[1] + dy]);
+        }
+        coords.push(coords[0]);
+        map.addSource(`zone-${z.id}`, {
+          type: "geojson",
+          data: { type: "Feature", geometry: { type: "Polygon", coordinates: [coords] } }
+        });
+        map.addLayer({
+          id: `zone-${z.id}-fill`,
+          type: "fill",
+          source: `zone-${z.id}`,
+          paint: { "fill-color": z.color, "fill-opacity": z.opacity }
+        });
+      });
+
+      // Markers de incidentes relativos al usuario
+      const mapboxgl = window.mapboxgl;
+      const incidents = [
+        { lng: lng + 0.013, lat: lat + 0.009, num: 4, color: "#EF4444" },
+        { lng: lng + 0.008, lat: lat - 0.005, num: 2, color: "#EF4444" },
+        { lng: lng - 0.006, lat: lat + 0.014, num: 3, color: "#FBBF24" },
+      ];
+      incidents.forEach(inc => {
+        const el = document.createElement("div");
+        el.style.cssText = `width:28px;height:28px;background:${inc.color};border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:white;font-family:'Saira',sans-serif;font-weight:900;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.5);`;
+        el.textContent = inc.num;
+        new mapboxgl.Marker(el).setLngLat([inc.lng, inc.lat]).addTo(map);
+      });
+
+      zonesGeneratedRef.current = true;
+    } catch (err) { console.warn("Zone gen error:", err); }
   }, [userPos]);
 
   // FALLBACK SVG si Mapbox falla
