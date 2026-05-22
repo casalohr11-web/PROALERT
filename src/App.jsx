@@ -397,7 +397,26 @@ const MapView = () => {
         attributionControl: false,
         pitchWithRotate: false,
         dragRotate: false,
+        // FIX iOS: forzar todas las interacciones touch
+        interactive: true,
+        boxZoom: false,
+        doubleClickZoom: true,
+        dragPan: true,
+        scrollZoom: true,
+        touchPitch: false,
+        touchZoomRotate: true,
+        cooperativeGestures: false,
+        trackResize: true,
       });
+
+      // FIX iOS: habilitar EXPLÍCITAMENTE los handlers de touch después del init
+      try {
+        map.dragPan.enable();
+        map.scrollZoom.enable();
+        map.touchZoomRotate.enable();
+        map.touchZoomRotate.disableRotation(); // sin rotación accidental
+        map.doubleClickZoom.enable();
+      } catch (e) { console.warn("Enable handlers:", e); }
 
       mapRef.current = map;
 
@@ -620,21 +639,25 @@ const MapView = () => {
 // === HOME SCREEN ===
 const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
   <div className="relative h-full overflow-hidden" style={{ background: C.bg }}>
+    {/* Capa 1: Mapa (ocupa todo, recibe gestos directamente) */}
     <MapView />
 
-    <div className="relative z-10 h-full flex flex-col">
-      <StatusBar />
+    {/* Capa 2: UI superpuesta - SIN bloquear toques excepto en controles específicos */}
+    <div className="absolute inset-0 z-10 flex flex-col" style={{ pointerEvents: "none" }}>
+      <div style={{ pointerEvents: "auto" }}>
+        <StatusBar />
+      </div>
 
-      {/* Brand row */}
+      {/* Brand row (interactivo) */}
       <div className="flex items-center justify-between px-4 pt-2 pb-3"
-        style={{ background: `linear-gradient(180deg, ${C.bg}F0 0%, ${C.bg}CC 70%, transparent 100%)` }}>
+        style={{ background: `linear-gradient(180deg, ${C.bg}F0 0%, ${C.bg}CC 70%, transparent 100%)`, pointerEvents: "auto" }}>
         <Logo size={18} tagline />
         <LogoBadge size={38} />
       </div>
 
-      {/* Search row */}
+      {/* Search row (interactivo) */}
       <div className="flex items-center gap-2 px-4 pb-3"
-        style={{ background: `linear-gradient(180deg, ${C.bg}CC 0%, transparent 100%)` }}>
+        style={{ background: `linear-gradient(180deg, ${C.bg}CC 0%, transparent 100%)`, pointerEvents: "auto" }}>
         <button onClick={onMenu} className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
           style={{ background: C.surface, border: `1px solid ${C.border}` }}>
           <Menu size={20} color="white" />
@@ -655,9 +678,9 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
         </button>
       </div>
 
-      {/* Map controls overlay - pointer-events:none deja pasar toques al mapa */}
+      {/* Zona central: MAPA LIBRE (pointer-events:none deja pasar todos los toques al mapa) */}
       <div className="flex-1 relative" style={{ pointerEvents: "none" }}>
-        {/* Legend */}
+        {/* Legend (interactivo) */}
         <div className="absolute top-3 left-4 rounded-2xl px-3 py-2 backdrop-blur-md" style={{ background: `${C.surface}CC`, border: `1px solid ${C.border}`, pointerEvents: "auto" }}>
           <p className="font-display font-bold text-[9px] text-white uppercase tracking-widest mb-1.5">Zonas</p>
           <div className="flex flex-col gap-1">
@@ -667,13 +690,13 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
           </div>
         </div>
 
-        {/* Layers button */}
+        {/* Layers button (interactivo) */}
         <button onClick={() => onNav("modus")} className="absolute top-3 right-4 w-10 h-10 rounded-xl flex items-center justify-center backdrop-blur-md"
           style={{ background: `${C.surface}CC`, border: `1px solid ${C.border}`, pointerEvents: "auto" }}>
           <Bell size={18} color="white" />
         </button>
 
-        {/* Locate button */}
+        {/* Locate button (interactivo) */}
         <button onClick={() => {
           if (!navigator.geolocation) return;
           navigator.geolocation.getCurrentPosition(
@@ -690,7 +713,7 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
           <Crosshair size={20} color="white" />
         </button>
 
-        {/* Floating women button */}
+        {/* Floating women button (interactivo) */}
         <button onClick={onWomen}
           className="absolute bottom-32 left-4 w-12 h-12 rounded-full flex items-center justify-center shadow-2xl"
           style={{ background: C.pink, boxShadow: `0 6px 20px ${C.pink}88`, pointerEvents: "auto" }}>
@@ -698,7 +721,7 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
           <Heart size={20} color="white" fill="white" />
         </button>
 
-        {/* Quick assistant button - bottom center */}
+        {/* Quick assistant button (interactivo) */}
         <button onClick={() => onNav("assistant")}
           className="absolute bottom-32 left-1/2 -translate-x-1/2 px-4 h-12 rounded-full flex items-center gap-2 backdrop-blur-md"
           style={{ background: C.orange, boxShadow: `0 6px 20px ${C.orange}88`, pointerEvents: "auto" }}>
@@ -707,7 +730,9 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
         </button>
       </div>
 
-      <BottomNav active="home" onNav={onNav} />
+      <div style={{ pointerEvents: "auto" }}>
+        <BottomNav active="home" onNav={onNav} />
+      </div>
     </div>
   </div>
 );
