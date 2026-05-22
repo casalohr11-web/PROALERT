@@ -531,6 +531,29 @@ const MapView = () => {
     } catch (err) { console.warn("Zone gen error:", err); }
   }, [userPos]);
 
+  // Verificar ruta pendiente cuando el mapa esté listo
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
+    const checkPending = () => {
+      try {
+        const pending = localStorage.getItem("proalert_pending_route");
+        if (pending) {
+          const { coords, color } = JSON.parse(pending);
+          if (coords && coords.length >= 2) {
+            window.dispatchEvent(new CustomEvent("proalert_drawroute", { detail: { coords, color } }));
+          }
+          localStorage.removeItem("proalert_pending_route");
+        }
+      } catch {}
+    };
+    if (map.isStyleLoaded()) {
+      setTimeout(checkPending, 600);
+    } else {
+      map.once("load", () => setTimeout(checkPending, 400));
+    }
+  }, [ready]);
+
   // FALLBACK SVG si Mapbox falla
   if (failed) {
     return (
@@ -562,7 +585,7 @@ const MapView = () => {
   }
 
   return (
-    <div className="absolute inset-0" style={{ background: "#0F1729", zIndex: 0, width: "100%", height: "100%" }}>
+    <div className="absolute inset-0" style={{ background: "#0F1729", zIndex: 0, width: "100%", height: "100%", touchAction: "none" }}>
       <div
         ref={containerRef}
         style={{
@@ -573,7 +596,8 @@ const MapView = () => {
           bottom: 0,
           width: "100%",
           height: "100%",
-          background: "#0F1729"
+          background: "#0F1729",
+          touchAction: "none"
         }}
       />
       {!ready && (
@@ -583,11 +607,11 @@ const MapView = () => {
         </div>
       )}
       <style>{`
-        .mapboxgl-canvas { outline: none !important; width: 100% !important; height: 100% !important; }
-        .mapboxgl-canvas-container { width: 100% !important; height: 100% !important; cursor: grab; }
+        .mapboxgl-canvas { outline: none !important; width: 100% !important; height: 100% !important; touch-action: none !important; }
+        .mapboxgl-canvas-container { width: 100% !important; height: 100% !important; cursor: grab; touch-action: none !important; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         .mapboxgl-canvas-container.mapboxgl-interactive:active { cursor: grabbing; }
         .mapboxgl-ctrl-attrib, .mapboxgl-ctrl-logo { display: none !important; }
-        .mapboxgl-map { width: 100% !important; height: 100% !important; }
+        .mapboxgl-map { width: 100% !important; height: 100% !important; touch-action: none !important; }
       `}</style>
     </div>
   );
@@ -3218,22 +3242,27 @@ const RouteScreen = ({ onBack, onNav }) => {
 
       if (data.routes && data.routes[0]) {
         const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        try { localStorage.setItem("proalert_pending_route", JSON.stringify({ coords, color })); } catch {}
         window.dispatchEvent(new CustomEvent("proalert_drawroute", {
           detail: { coords, color }
         }));
         toast(`Ruta ${selected === "safe" ? "segura" : "rápida"} trazada · ${(data.routes[0].distance/1000).toFixed(1)} km`);
         setTimeout(() => onNav("home"), 1000);
       } else {
+        const fallbackCoords = [start, end];
+        try { localStorage.setItem("proalert_pending_route", JSON.stringify({ coords: fallbackCoords, color })); } catch {}
         window.dispatchEvent(new CustomEvent("proalert_drawroute", {
-          detail: { coords: [start, end], color }
+          detail: { coords: fallbackCoords, color }
         }));
         toast(`Ruta trazada (modo simple)`);
         setTimeout(() => onNav("home"), 1000);
       }
     } catch (err) {
       console.warn("Directions API error:", err);
+      const fallbackCoords = [start, end];
+      try { localStorage.setItem("proalert_pending_route", JSON.stringify({ coords: fallbackCoords, color })); } catch {}
       window.dispatchEvent(new CustomEvent("proalert_drawroute", {
-        detail: { coords: [start, end], color }
+        detail: { coords: fallbackCoords, color }
       }));
       toast(`Ruta trazada (sin conexión)`);
       setTimeout(() => onNav("home"), 1000);
