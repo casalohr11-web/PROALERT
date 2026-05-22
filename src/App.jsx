@@ -10,7 +10,10 @@ import {
   Clock, CheckCircle2, Circle, Footprints, Calculator,
   Award, TrendingUp, UserCheck, Bell, Home,
   Car, Hash, Loader, ScrollText, Compass, ChevronDown,
-  User, AtSign
+  User, AtSign,
+  Truck, UserX, EyeOff, DollarSign, Flame, Navigation, Ban, ShieldOff,
+  Volume2, VolumeX, RotateCw, ArrowUp, ArrowUpLeft, ArrowUpRight,
+  CornerUpLeft, CornerUpRight, MoreHorizontal, Wifi, WifiOff
 } from "lucide-react";
 
 // === BRAND ===
@@ -1672,6 +1675,198 @@ const ProTipsScreen = ({ onBack, onMenu }) => {
         ]},
       ]
     },
+    // === NUEVOS TIPS ===
+    {
+      id: "alerta-amber-mexico",
+      cat: "emergencia",
+      t: "Alerta AMBER México: niño perdido",
+      c: "Protocolo nacional de búsqueda inmediata",
+      icon: AlertCircle, color: C.amber,
+      content: [
+        { type: "alert", color: C.red, text: "Si un menor desaparece, las primeras 72 horas son cruciales. NO esperes 24 horas para denunciar — eso es un mito." },
+        { type: "section", title: "Cómo activar la Alerta AMBER" },
+        { type: "list", items: [
+          "Llama INMEDIATAMENTE al 911 o a Fiscalía estatal",
+          "Reporta: nombre completo, edad, descripción física y ropa que vestía",
+          "Aporta fotografía RECIENTE (de los últimos 6 meses)",
+          "Indica último lugar donde fue visto y con quién estaba",
+          "Si tienes sospecha de sustracción, dilo claramente"
+        ]},
+        { type: "section", title: "Qué hace la autoridad" },
+        { type: "list", items: [
+          "Se difunde por TV, radio, redes sociales y carreteras",
+          "Se coordinan PGJ, SSP federal y municipal",
+          "Se revisan cámaras del C5 y vialidades",
+          "Aeropuertos y centrales camioneras se alertan"
+        ]},
+        { type: "section", title: "Lo que TÚ puedes hacer" },
+        { type: "list", items: [
+          "Comparte la alerta oficial, NO rumores sin fuente",
+          "Si lo viste, llama al 911 inmediatamente con la ubicación exacta",
+          "NO te acerques al sospechoso si lo identificas — llama y observa de lejos",
+          "Sigue la cuenta oficial @AlertaAmberMx para info verificada"
+        ]},
+      ]
+    },
+    {
+      id: "robo-celular-protocolo",
+      cat: "fraudes",
+      t: "Te robaron el celular: qué hacer en 1 hora",
+      c: "Protocolo paso a paso para minimizar daños",
+      icon: Phone, color: C.red,
+      content: [
+        { type: "alert", color: C.red, text: "Cada minuto cuenta. Los rateros venden tu celular en menos de 2 horas y pueden vaciar tus cuentas en ese tiempo." },
+        { type: "section", title: "Minuto 0-15: BLOQUEAR" },
+        { type: "list", items: [
+          "Desde otro celular, entra a iCloud.com (iPhone) o Find My Device (Android)",
+          "Pon el celular en modo perdido con mensaje y número de contacto",
+          "Borra el celular remotamente si tenías info bancaria sensible",
+          "Llama a tu banco al número del reverso de tu tarjeta y bloquea apps"
+        ]},
+        { type: "section", title: "Minuto 15-30: REPORTAR" },
+        { type: "list", items: [
+          "Llama a tu operador (Telcel *264, AT&T 800-288-2020, Movistar 800-088-8888)",
+          "Pide bloqueo de IMEI (necesitarás tu CURP o RFC)",
+          "Pide reposición de SIM con tu mismo número",
+          "Si el ladrón tiene la SIM y recibe SMS de banco, puede vaciar cuentas"
+        ]},
+        { type: "section", title: "Minuto 30-60: DENUNCIAR" },
+        { type: "list", items: [
+          "Ve al MP o usa Denuncia Digital de tu Fiscalía estatal",
+          "Necesitas: IMEI (estaba en la caja), modelo, color, lugar y hora del robo",
+          "Si fue con violencia: es robo agravado, pena mayor",
+          "Cambia TODAS tus contraseñas (correo, redes, banco) desde computadora segura"
+        ]},
+        { type: "section", title: "Prevención futura" },
+        { type: "list", items: [
+          "Activa autenticación de 2 factores con app (NO SMS) en banca y correo",
+          "Apunta tu IMEI en lugar seguro: marca *#06# en el teclado",
+          "Usa Face ID/huella para apps bancarias, NUNCA solo PIN",
+          "No guardes contraseñas en notas sin cifrar"
+        ]},
+      ]
+    },
+    {
+      id: "transporte-app-seguro",
+      cat: "conducir",
+      t: "Uber/Didi/InDriver: viaja seguro",
+      c: "Verificaciones antes y durante el viaje",
+      icon: Car, color: C.blue,
+      content: [
+        { type: "alert", color: C.amber, text: "El 70% de incidentes en apps de transporte pasan por NO verificar al conductor. 30 segundos te pueden salvar la vida." },
+        { type: "section", title: "Antes de subir" },
+        { type: "list", items: [
+          "VERIFICA: placas del auto, modelo, color y foto del conductor coincidan con la app",
+          "Pregunta al conductor: '¿A nombre de quién va el viaje?' (debe decir tu nombre)",
+          "NUNCA subas si no coincide — pide otro viaje y reporta",
+          "Comparte ubicación en tiempo real con un contacto de confianza",
+          "Toma foto a las placas antes de subir (manda al contacto)"
+        ]},
+        { type: "section", title: "Durante el viaje" },
+        { type: "list", items: [
+          "Verifica que la ruta del GPS coincide con la app",
+          "Si toma ruta diferente sin explicación, pregunta amablemente",
+          "Si insiste en ruta rara: pide bajar en lugar concurrido",
+          "Mantén el celular cargado y con datos activos",
+          "En CDMX/Edomex: número de emergencia desde la app está disponible 24/7"
+        ]},
+        { type: "section", title: "Mujeres viajando solas" },
+        { type: "list", items: [
+          "Usa Uber con opción 'Compartir viaje' siempre",
+          "Didi Mujer y Uber Ellas: viajes con conductoras (CDMX, Monterrey)",
+          "InDriver: NO recomendado de noche, menos verificación",
+          "Si vas a casa: pide bajar 1-2 cuadras antes y camina con cámara abierta"
+        ]},
+        { type: "section", title: "Si algo va mal" },
+        { type: "list", items: [
+          "Botón de pánico en la app llama al 911 con tu ubicación",
+          "ProAlert: ¿Qué hago? → Te guía según situación",
+          "Después del viaje: califica honestamente para proteger a otros"
+        ]},
+      ]
+    },
+    {
+      id: "violencia-genero",
+      cat: "emergencia",
+      t: "Violencia de género: red de apoyo",
+      c: "Recursos legales y de protección para mujeres",
+      icon: Heart, color: C.pink,
+      content: [
+        { type: "alert", color: C.pink, text: "NO estás sola. Hay redes profesionales que te ayudan gratis y de forma confidencial. Cualquier tipo de violencia (verbal, física, psicológica, económica) cuenta." },
+        { type: "section", title: "Líneas de ayuda 24/7" },
+        { type: "list", items: [
+          "Línea Nacional de la Mujer: 800-108-4053 (24h, gratuita, confidencial)",
+          "LOCATEL CDMX: 5658-1111 (orientación y refugio)",
+          "Línea Naranja (Edomex): 800-10-84-053",
+          "911: emergencias en curso",
+          "*765 (#SOS desde celular): respuesta inmediata"
+        ]},
+        { type: "section", title: "Orden de protección" },
+        { type: "list", items: [
+          "Es GRATUITA y se tramita en Fiscalía Especializada en Mujeres",
+          "Te dan en menos de 4 horas en casos urgentes",
+          "Obliga al agresor a alejarse de ti, tu casa, trabajo y escuela",
+          "Si la viola: arresto inmediato",
+          "Pide acompañamiento psicológico y jurídico (gratis)"
+        ]},
+        { type: "section", title: "Refugios y casas seguras" },
+        { type: "list", items: [
+          "Red Nacional de Refugios: rednacionalderefugios.org.mx",
+          "Si necesitas salir HOY: llama a Línea Mujer y te ubican",
+          "Llevan a ti y a tus hijos sin costo, ubicación confidencial",
+          "Tienen abogados, psicólogos, trabajo social y guardería"
+        ]},
+        { type: "section", title: "Documentación importante" },
+        { type: "list", items: [
+          "Toma fotos de cualquier lesión (con fecha visible)",
+          "Guarda mensajes, audios, capturas como evidencia",
+          "Guarda tickets médicos si fuiste atendida",
+          "Habla con vecinos o familia que puedan ser testigos",
+          "En ProAlert: usa Alerta Mujer para activar red de contactos al instante"
+        ]},
+      ]
+    },
+    {
+      id: "secuestro-virtual",
+      cat: "fraudes",
+      t: "Secuestro virtual: identifícalo a tiempo",
+      c: "El fraude telefónico más común y peligroso de México",
+      icon: PhoneCall, color: C.red,
+      content: [
+        { type: "alert", color: C.red, text: "El secuestro virtual NO es secuestro real. Es un fraude por teléfono que cobra MILES de víctimas al año en México. Aprende a identificarlo y rómpelo." },
+        { type: "section", title: "Cómo opera" },
+        { type: "list", items: [
+          "Te llaman desde número desconocido (a veces internacional)",
+          "Una persona llora o grita pidiendo ayuda fingiendo ser familiar",
+          "Otra voz amenaza: 'Tengo a tu hijo/hija, no cuelgues'",
+          "Te exigen pagar transferencia o tarjeta de regalo de inmediato",
+          "Te presionan a NO colgar ni hacer otras llamadas"
+        ]},
+        { type: "section", title: "Cómo confirmas que es fraude" },
+        { type: "list", items: [
+          "El familiar 'secuestrado' NUNCA da datos verificables (nombre completo, fecha)",
+          "Lloran o gritan pero nunca contestan preguntas específicas",
+          "El monto es siempre 'urgente' y 'tienes 1 hora'",
+          "Te piden depósito en Oxxo, tarjeta de regalo, o transferencia rápida",
+          "NO permiten que llames a otros familiares"
+        ]},
+        { type: "section", title: "Qué hacer EN EL MOMENTO" },
+        { type: "list", items: [
+          "Mantén la calma, NO grites ni respondas con datos personales",
+          "Pon el manos libres y llama desde OTRO celular al familiar 'secuestrado'",
+          "Pregunta a la voz del 'secuestrado': '¿Cuál es tu segundo nombre?' o algo solo familia sabe",
+          "Si no contesta, dile a la voz amenazante 'voy a confirmarlo' y cuelga",
+          "Llama al 088 (CONATIB) o 911 mientras tanto"
+        ]},
+        { type: "section", title: "Prevención" },
+        { type: "list", items: [
+          "Crea una PALABRA CLAVE familiar — solo familia la sabe",
+          "Enseña a niños y adultos mayores a NO dar datos por teléfono",
+          "NO publiques rutinas, viajes o ubicaciones en redes",
+          "Si una llamada huele a estafa: cuelga, no es grosería"
+        ]},
+      ]
+    },
   ];
 
   const filtered = filter === "all" ? tips : tips.filter(t => t.cat === filter);
@@ -3211,6 +3406,34 @@ const RouteScreen = ({ onBack, onNav }) => {
   const startCoord = userLoc || [19.4015, -99.180];
   const endCoord = destCoords || destinationCoords[destination] || [startCoord[0] + 0.025, startCoord[1] + 0.02];
   const distKm = haversine(startCoord, endCoord);
+
+  // 🧠 INTELIGENCIA: Detectar zonas peligrosas en la ruta directa
+  // Las zonas problemáticas se generan alrededor del usuario (ver MapView)
+  // Aquí simulamos detección de zonas rojas/amarillas a lo largo del trayecto
+  const dangerousZonesOnRoute = (() => {
+    if (!userLoc || !endCoord) return [];
+    // Zonas problema cerca del usuario (mismo offset que MapView)
+    const [lat, lng] = startCoord;
+    const zones = [
+      { center: [lat + 0.008, lng + 0.011], radius: 0.45, level: "red", name: "Zona reportada" },
+      { center: [lat + 0.012, lng - 0.008], radius: 0.38, level: "amber", name: "Riesgo medio" },
+    ];
+    // Verificar si la línea startCoord→endCoord pasa cerca de alguna zona roja/amarilla
+    const detected = [];
+    zones.forEach(z => {
+      // Distancia mínima del punto z al segmento startCoord-endCoord (aproximación)
+      const distToZone = haversine(z.center, [(startCoord[0] + endCoord[0]) / 2, (startCoord[1] + endCoord[1]) / 2]);
+      // Si la zona está cerca del corredor de la ruta
+      if (distToZone < distKm * 0.6 + z.radius) {
+        detected.push(z);
+      }
+    });
+    return detected;
+  })();
+
+  const hasDangerOnRoute = dangerousZonesOnRoute.length > 0;
+  const dangerCount = dangerousZonesOnRoute.length;
+
   // Multiplicadores: ruta rápida 1.15x línea recta, ruta segura 1.35x (más vueltas)
   const fastDistKm = Math.max(0.5, distKm * 1.15);
   const safeDistKm = Math.max(0.6, distKm * 1.35);
@@ -3255,9 +3478,12 @@ const RouteScreen = ({ onBack, onNav }) => {
       end = [start[0] + 0.025, start[1] + 0.02];
     }
 
-    const color = selected === "safe" ? "#10B981" : "#0077BB";
-    const profile = selected === "safe" ? "driving" : "driving-traffic";
-    toast(`Calculando ruta ${selected === "safe" ? "segura" : "rápida"}...`);
+    // Si no hay peligro, usamos siempre ruta directa
+    const effectiveSelected = hasDangerOnRoute ? selected : "fast";
+    const color = effectiveSelected === "safe" ? "#10B981" : "#0077BB";
+    const profile = effectiveSelected === "safe" ? "driving" : "driving-traffic";
+    const labelTipo = !hasDangerOnRoute ? "directa" : (effectiveSelected === "safe" ? "segura" : "rápida");
+    toast(`Calculando ruta ${labelTipo}...`);
 
     try {
       // Mapbox Directions API - ruta real siguiendo calles con tráfico
@@ -3271,7 +3497,7 @@ const RouteScreen = ({ onBack, onNav }) => {
         window.dispatchEvent(new CustomEvent("proalert_drawroute", {
           detail: { coords, color }
         }));
-        toast(`Ruta ${selected === "safe" ? "segura" : "rápida"} trazada · ${(data.routes[0].distance/1000).toFixed(1)} km`);
+        toast(`Ruta ${labelTipo} trazada · ${(data.routes[0].distance/1000).toFixed(1)} km`);
         setTimeout(() => onNav("home"), 1000);
       } else {
         const fallbackCoords = [start, end];
@@ -3382,65 +3608,111 @@ const RouteScreen = ({ onBack, onNav }) => {
               style={{ background: C.cardHi, color: C.blue }}>Cambiar</button>
           </div>
 
-          <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-3">Elige tu ruta</p>
+          <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-3">
+            {hasDangerOnRoute ? "Elige tu ruta" : "Ruta recomendada"}
+          </p>
 
-          <button onClick={() => setSelected("safe")} className="w-full rounded-3xl p-4 mb-2 text-left transition-all"
-            style={{ background: selected === "safe" ? `${C.green}1A` : C.card, border: `2px solid ${selected === "safe" ? C.green : C.border}` }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.green }}><Shield size={16} color="white" /></div>
-                <div>
-                  <p className="font-display font-bold text-white text-base leading-tight">Ruta más segura</p>
-                  <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: C.green }}>Recomendada</p>
-                </div>
+          {/* CASO 1: HAY zonas peligrosas → mostrar 2 opciones */}
+          {hasDangerOnRoute && (
+            <>
+              <div className="rounded-2xl p-3 mb-3 flex items-start gap-2" style={{ background: `${C.amber}15`, border: `1px solid ${C.amber}55` }}>
+                <AlertTriangle size={16} color={C.amber} className="shrink-0 mt-0.5" />
+                <p className="text-[11px] font-body" style={{ color: "white" }}>
+                  Detectamos <span style={{ color: C.amber, fontWeight: 700 }}>{dangerCount} {dangerCount === 1 ? "zona" : "zonas"} con incidentes</span> en tu camino. Por eso te ofrecemos una alternativa segura.
+                </p>
               </div>
-              {selected === "safe" && <BadgeCheck size={22} color={C.green} />}
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tiempo</p><p className="font-display font-black text-white text-lg">{routes.safe.time}</p></div>
-              <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Distancia</p><p className="font-display font-black text-white text-lg">{routes.safe.distance}</p></div>
-              <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tráfico</p><p className="font-display font-black text-white text-lg">{routes.safe.traffic}</p></div>
-            </div>
-            <p className="text-[11px] font-body mb-2" style={{ color: C.muted }}>Vía {routes.safe.via}</p>
-            <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
-              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: C.green }} /><span className="text-[10px] font-body" style={{ color: C.green }}>Evita zonas rojas</span></div>
-              <span className="text-[10px]" style={{ color: C.muted }}>·</span>
-              <div className="flex items-center gap-1.5"><BadgeCheck size={11} color={C.green} /><span className="text-[10px] font-body" style={{ color: C.muted }}>0 alertas</span></div>
-            </div>
-          </button>
 
-          <button onClick={() => setSelected("fast")} className="w-full rounded-3xl p-4 mb-2 text-left transition-all"
-            style={{ background: selected === "fast" ? `${C.blue}1A` : C.card, border: `2px solid ${selected === "fast" ? C.blue : C.border}` }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.blue }}><Zap size={16} color="white" /></div>
-                <div>
-                  <p className="font-display font-bold text-white text-base leading-tight">Ruta más rápida</p>
-                  <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: C.blue }}>Ahorra {savedMin} min</p>
+              <button onClick={() => setSelected("safe")} className="w-full rounded-3xl p-4 mb-2 text-left transition-all"
+                style={{ background: selected === "safe" ? `${C.green}1A` : C.card, border: `2px solid ${selected === "safe" ? C.green : C.border}` }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.green }}><Shield size={16} color="white" /></div>
+                    <div>
+                      <p className="font-display font-bold text-white text-base leading-tight">Ruta más segura</p>
+                      <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: C.green }}>Recomendada</p>
+                    </div>
+                  </div>
+                  {selected === "safe" && <BadgeCheck size={22} color={C.green} />}
                 </div>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tiempo</p><p className="font-display font-black text-white text-lg">{routes.safe.time}</p></div>
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Distancia</p><p className="font-display font-black text-white text-lg">{routes.safe.distance}</p></div>
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tráfico</p><p className="font-display font-black text-white text-lg">{routes.safe.traffic}</p></div>
+                </div>
+                <p className="text-[11px] font-body mb-2" style={{ color: C.muted }}>Vía {routes.safe.via}</p>
+                <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
+                  <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full" style={{ background: C.green }} /><span className="text-[10px] font-body" style={{ color: C.green }}>Evita {dangerCount} {dangerCount === 1 ? "zona" : "zonas"}</span></div>
+                  <span className="text-[10px]" style={{ color: C.muted }}>·</span>
+                  <div className="flex items-center gap-1.5"><BadgeCheck size={11} color={C.green} /><span className="text-[10px] font-body" style={{ color: C.muted }}>0 alertas</span></div>
+                </div>
+              </button>
+
+              <button onClick={() => setSelected("fast")} className="w-full rounded-3xl p-4 mb-2 text-left transition-all"
+                style={{ background: selected === "fast" ? `${C.blue}1A` : C.card, border: `2px solid ${selected === "fast" ? C.blue : C.border}` }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.blue }}><Zap size={16} color="white" /></div>
+                    <div>
+                      <p className="font-display font-bold text-white text-base leading-tight">Ruta más rápida</p>
+                      <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: C.blue }}>Ahorra {savedMin} min</p>
+                    </div>
+                  </div>
+                  {selected === "fast" && <BadgeCheck size={22} color={C.blue} />}
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tiempo</p><p className="font-display font-black text-white text-lg">{routes.fast.time}</p></div>
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Distancia</p><p className="font-display font-black text-white text-lg">{routes.fast.distance}</p></div>
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tráfico</p><p className="font-display font-black text-white text-lg">{routes.fast.traffic}</p></div>
+                </div>
+                <p className="text-[11px] font-body mb-2" style={{ color: C.muted }}>Vía {routes.fast.via}</p>
+                <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
+                  <div className="flex items-center gap-1.5"><AlertTriangle size={11} color={C.red} /><span className="text-[10px] font-body" style={{ color: C.red }}>Cruza {dangerCount} {dangerCount === 1 ? "zona" : "zonas"} de alerta</span></div>
+                  <span className="text-[10px]" style={{ color: C.muted }}>·</span>
+                  <div className="flex items-center gap-1.5"><span className="text-[10px] font-body" style={{ color: C.muted }}>{dangerCount} alertas</span></div>
+                </div>
+              </button>
+            </>
+          )}
+
+          {/* CASO 2: NO hay zonas peligrosas → solo una ruta */}
+          {!hasDangerOnRoute && (
+            <>
+              <div className="rounded-2xl p-3 mb-3 flex items-start gap-2" style={{ background: `${C.green}15`, border: `1px solid ${C.green}55` }}>
+                <BadgeCheck size={16} color={C.green} className="shrink-0 mt-0.5" />
+                <p className="text-[11px] font-body" style={{ color: "white" }}>
+                  <span style={{ color: C.green, fontWeight: 700 }}>Camino despejado.</span> No hay zonas con incidentes recientes en esta ruta.
+                </p>
               </div>
-              {selected === "fast" && <BadgeCheck size={22} color={C.blue} />}
-            </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
-              <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tiempo</p><p className="font-display font-black text-white text-lg">{routes.fast.time}</p></div>
-              <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Distancia</p><p className="font-display font-black text-white text-lg">{routes.fast.distance}</p></div>
-              <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tráfico</p><p className="font-display font-black text-white text-lg">{routes.fast.traffic}</p></div>
-            </div>
-            <p className="text-[11px] font-body mb-2" style={{ color: C.muted }}>Vía {routes.fast.via}</p>
-            <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
-              <div className="flex items-center gap-1.5"><AlertTriangle size={11} color={C.red} /><span className="text-[10px] font-body" style={{ color: C.red }}>Cruza zona de alerta</span></div>
-              <span className="text-[10px]" style={{ color: C.muted }}>·</span>
-              <div className="flex items-center gap-1.5"><span className="text-[10px] font-body" style={{ color: C.muted }}>{routes.fast.warnings} alertas</span></div>
-            </div>
-          </button>
+
+              <div className="w-full rounded-3xl p-4 mb-2"
+                style={{ background: `${C.blue}1A`, border: `2px solid ${C.blue}` }}>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: C.blue }}><Navigation2 size={16} color="white" /></div>
+                    <div>
+                      <p className="font-display font-bold text-white text-base leading-tight">Ruta directa</p>
+                      <p className="text-[10px] font-display font-bold uppercase tracking-wider" style={{ color: C.blue }}>Camino seguro</p>
+                    </div>
+                  </div>
+                  <BadgeCheck size={22} color={C.blue} />
+                </div>
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tiempo</p><p className="font-display font-black text-white text-lg">{routes.fast.time}</p></div>
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Distancia</p><p className="font-display font-black text-white text-lg">{routes.fast.distance}</p></div>
+                  <div><p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Tráfico</p><p className="font-display font-black text-white text-lg">{routes.fast.traffic}</p></div>
+                </div>
+                <p className="text-[11px] font-body" style={{ color: C.muted }}>Vía {routes.fast.via}</p>
+              </div>
+            </>
+          )}
 
           <div className="rounded-2xl p-4 mb-4 mt-3" style={{ background: C.card, border: `1px solid ${C.border}` }}>
             <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-3">Indicaciones</p>
             <div className="flex flex-col gap-2">
-              {routes[selected].steps.map((s, i, arr) => (
+              {(routes[hasDangerOnRoute ? selected : "fast"]?.steps || []).map((s, i, arr) => (
                 <div key={i} className="flex gap-3">
                   <div className="flex flex-col items-center">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: selected === "safe" ? C.green : C.blue }}>
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: (hasDangerOnRoute && selected === "safe") ? C.green : C.blue }}>
                       <span className="text-[9px] font-display font-black text-white">{i + 1}</span>
                     </div>
                     {i < arr.length - 1 && <div className="w-0.5 flex-1 my-1" style={{ background: C.border }} />}
@@ -3453,7 +3725,7 @@ const RouteScreen = ({ onBack, onNav }) => {
 
           <button onClick={startNav}
             className="w-full py-4 rounded-2xl font-display font-bold text-white text-sm uppercase tracking-widest flex items-center justify-center gap-2 mb-2"
-            style={{ background: selected === "safe" ? C.green : C.blue, boxShadow: `0 8px 24px ${selected === "safe" ? C.green : C.blue}66` }}>
+            style={{ background: (hasDangerOnRoute && selected === "safe") ? C.green : C.blue, boxShadow: `0 8px 24px ${(hasDangerOnRoute && selected === "safe") ? C.green : C.blue}66` }}>
             <Navigation2 size={16} />Iniciar navegación
           </button>
           <button onClick={() => onNav("trip")} className="w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-widest"
