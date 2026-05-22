@@ -2007,44 +2007,177 @@ const ProTipsScreen = ({ onBack, onMenu }) => {
 
 // === EMERGENCY NUMBERS ===
 const EmergencyScreen = ({ onBack }) => {
-  const nums = [
-    { n: "911", t: "Emergencias", icon: Siren, color: C.red, urgent: true },
-    { n: "089", t: "Denuncia anónima", icon: Megaphone, color: C.orange },
-    { n: "074", t: "CAPUFE", icon: Truck, color: C.blue },
-    { n: "078", t: "Ángeles Verdes", icon: HeartPulse, color: C.green },
-    { n: "5658 1112", t: "LOCATEL", icon: Phone, color: C.blue },
-    { n: "5395 1111", t: "Cruz Roja", icon: HeartPulse, color: C.red },
-    { n: "5683 2222", t: "Protección Civil", icon: Shield, color: C.amber },
-    { n: "5684 2124", t: "Policía Federal Caminos", icon: Shield, color: C.blue },
-    { n: "5768 3799", t: "Bomberos", icon: Flame, color: C.orange },
+  const { state, dispatch } = useApp();
+  const [selectedState, setSelectedState] = useState(state.user.estado || "CDMX");
+  const [search, setSearch] = useState("");
+
+  // Persistir estado elegido
+  useEffect(() => {
+    try { localStorage.setItem("proalert_estado", selectedState); } catch {}
+  }, [selectedState]);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proalert_estado");
+      if (saved) setSelectedState(saved);
+    } catch {}
+  }, []);
+
+  // Números nacionales (siempre disponibles)
+  const nacionales = [
+    { n: "911", t: "Emergencias", desc: "Policía, ambulancia, bomberos", icon: Siren, color: C.red, urgent: true, cat: "emergencia" },
+    { n: "089", t: "Denuncia anónima", desc: "Reportar delitos sin dar nombre", icon: Megaphone, color: C.orange, cat: "denuncia" },
+    { n: "088", t: "Atención ciudadana SSPC", desc: "Quejas contra autoridades federales", icon: Shield, color: C.blue, cat: "denuncia" },
+    { n: "078", t: "Ángeles Verdes", desc: "Auxilio en carretera 24h", icon: HeartPulse, color: C.green, cat: "vialidad" },
+    { n: "074", t: "CAPUFE", desc: "Carreteras y autopistas federales", icon: Truck, color: C.blue, cat: "vialidad" },
+    { n: "800-108-4053", t: "Línea Nacional de la Mujer", desc: "24h, gratuita, confidencial", icon: Heart, color: C.pink, cat: "mujer" },
+    { n: "800-00-26237", t: "CONAVIM", desc: "Comisión Nacional contra Violencia hacia Mujeres", icon: HeartPulse, color: C.pink, cat: "mujer" },
+    { n: "01-800-715-2000", t: "CNDH", desc: "Comisión Nacional Derechos Humanos", icon: Shield, color: C.amber, cat: "derechos" },
+    { n: "800-000-2387", t: "Alerta Amber México", desc: "Niños desaparecidos", icon: AlertCircle, color: C.amber, cat: "denuncia" },
+    { n: "55-5340-5000", t: "Cruz Roja Mexicana", desc: "Ambulancias y atención", icon: HeartPulse, color: C.red, cat: "emergencia" },
   ];
+
+  // Estados con sus números específicos
+  const porEstado = {
+    "CDMX": [
+      { n: "5658-1111", t: "LOCATEL CDMX", desc: "Información, orientación, refugio", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "55-5345-5200", t: "Fiscalía CDMX", desc: "Denuncias formales", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "55-5345-5240", t: "Fiscalía Especializada Mujeres CDMX", desc: "Violencia de género", icon: Heart, color: C.pink, cat: "mujer" },
+      { n: "55-5345-5046", t: "Fiscalía Antisecuestro CDMX", desc: "Secuestros y privación de libertad", icon: AlertTriangle, color: C.red, cat: "denuncia" },
+      { n: "55-5242-6500", t: "Fiscalía Ciberdelitos CDMX", desc: "Fraudes en línea, extorsión digital", icon: Lock, color: C.blue, cat: "ciber" },
+      { n: "55-5208-9898", t: "SAPCI (Atención a víctimas)", desc: "Apoyo psicológico y legal gratis", icon: HelpCircle, color: C.green, cat: "atencion" },
+      { n: "55-5683-2222", t: "Protección Civil CDMX", desc: "Sismos, fugas, derrumbes", icon: Shield, color: C.amber, cat: "emergencia" },
+      { n: "55-5768-3799", t: "Bomberos CDMX", desc: "Incendios y rescates", icon: Flame, color: C.orange, cat: "emergencia" },
+      { n: "55-5765-4316", t: "C5 CDMX", desc: "Centro de Comando ciudadano", icon: Eye, color: C.blue, cat: "atencion" },
+      { n: "55-5004-5000", t: "INVEA CDMX", desc: "Verificación vehicular y multas", icon: Car, color: C.amber, cat: "vialidad" },
+    ],
+    "Estado de México": [
+      { n: "800-696-9696", t: "Locatel Edomex", desc: "Información y orientación", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "722-275-9800", t: "Fiscalía Edomex", desc: "Denuncias formales", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "800-108-4053", t: "Línea Naranja Edomex", desc: "Mujeres víctimas de violencia", icon: Heart, color: C.pink, cat: "mujer" },
+      { n: "800-832-4769", t: "Fiscalía Antisecuestro Edomex", desc: "Secuestros y extorsión", icon: AlertTriangle, color: C.red, cat: "denuncia" },
+      { n: "722-226-1700", t: "Fiscalía Ciberdelitos Edomex", desc: "Delitos electrónicos", icon: Lock, color: C.blue, cat: "ciber" },
+      { n: "722-275-6300", t: "Protección Civil Edomex", desc: "Emergencias mayores", icon: Shield, color: C.amber, cat: "emergencia" },
+      { n: "800-823-3486", t: "CODHEM", desc: "Comisión Derechos Humanos Edomex", icon: Shield, color: C.amber, cat: "derechos" },
+    ],
+    "Jalisco": [
+      { n: "800-227-8011", t: "Locatel Jalisco", desc: "Atención ciudadana 24h", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "33-3837-6000", t: "Fiscalía Jalisco", desc: "Denuncias del estado", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "075", t: "Atención Mujeres Jalisco", desc: "Violencia familiar y de género", icon: Heart, color: C.pink, cat: "mujer" },
+      { n: "800-220-2222", t: "CEDHJ", desc: "Comisión Derechos Humanos Jalisco", icon: Shield, color: C.amber, cat: "derechos" },
+    ],
+    "Nuevo León": [
+      { n: "070", t: "Atención Ciudadana NL", desc: "Información y servicios", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "81-2020-3000", t: "Fiscalía NL", desc: "Denuncias del estado", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "81-2033-1717", t: "Fiscalía Especializada Mujeres NL", desc: "Violencia de género", icon: Heart, color: C.pink, cat: "mujer" },
+      { n: "800-008-6464", t: "CEDH NL", desc: "Derechos humanos del estado", icon: Shield, color: C.amber, cat: "derechos" },
+    ],
+    "Querétaro": [
+      { n: "070", t: "Locatel Querétaro", desc: "Atención y orientación", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "442-238-7600", t: "Fiscalía Querétaro", desc: "Denuncias", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "442-216-4570", t: "Atención a Mujeres Qro", desc: "Apoyo y refugio", icon: Heart, color: C.pink, cat: "mujer" },
+    ],
+    "Puebla": [
+      { n: "075", t: "Locatel Puebla", desc: "Atención ciudadana", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "222-211-5500", t: "Fiscalía Puebla", desc: "Denuncias del estado", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "800-624-2450", t: "Línea SOS Mujer Puebla", desc: "Violencia de género 24h", icon: Heart, color: C.pink, cat: "mujer" },
+    ],
+    "Guanajuato": [
+      { n: "070", t: "Atención Ciudadana Gto", desc: "Información del estado", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "473-735-1500", t: "Fiscalía Guanajuato", desc: "Denuncias", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "800-290-0024", t: "Línea Mujer Gto", desc: "Apoyo violencia de género", icon: Heart, color: C.pink, cat: "mujer" },
+    ],
+    "Veracruz": [
+      { n: "075", t: "Atención Veracruz", desc: "Locatel y orientación", icon: Phone, color: C.blue, cat: "atencion" },
+      { n: "228-841-6170", t: "Fiscalía Veracruz", desc: "Denuncias del estado", icon: Shield, color: C.blue, cat: "denuncia" },
+      { n: "800-260-3010", t: "Línea Mujer Veracruz", desc: "Violencia familiar", icon: Heart, color: C.pink, cat: "mujer" },
+    ],
+  };
+
+  const estados = ["CDMX", "Estado de México", "Jalisco", "Nuevo León", "Querétaro", "Puebla", "Guanajuato", "Veracruz"];
+  const localesAhora = porEstado[selectedState] || [];
+  const todos = [...nacionales, ...localesAhora];
+  const filtrados = search
+    ? todos.filter(x => x.t.toLowerCase().includes(search.toLowerCase()) || (x.desc || "").toLowerCase().includes(search.toLowerCase()))
+    : todos;
+
+  const renderItem = (n, i) => {
+    const Icon = n.icon;
+    const telNumber = n.n.replace(/\s/g, "").replace(/-/g, "");
+    return (
+      <a key={`${n.n}-${i}`} href={`tel:${telNumber}`} className="rounded-2xl p-3 flex items-center gap-3 no-underline"
+        style={{ background: n.urgent ? `${C.red}1A` : C.card, border: `1px solid ${n.urgent ? C.red : C.border}` }}>
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${n.color}22` }}>
+          <Icon size={18} color={n.color} />
+        </div>
+        <div className="flex-1 text-left min-w-0">
+          <p className="font-display font-bold text-white text-sm leading-tight">{n.t}</p>
+          {n.desc && <p className="text-[10px] font-body truncate" style={{ color: C.muted }}>{n.desc}</p>}
+          <p className="font-display font-black text-base" style={{ color: n.urgent ? C.red : "white" }}>{n.n}</p>
+        </div>
+        <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ background: C.green }}>
+          <Phone size={14} color="white" fill="white" />
+        </div>
+      </a>
+    );
+  };
+
   return (
     <div className="h-full flex flex-col" style={{ background: C.bg }}>
       <StatusBar />
-      <Header onBack={onBack} title="EMERGENCIA" />
+      <Header onBack={onBack} title="DIRECTORIO OFICIAL" />
       <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6">
-        <p className="text-xs font-body mb-4" style={{ color: C.muted }}>Toca para llamar directamente</p>
-        <div className="flex flex-col gap-2">
-          {nums.map((n, i) => {
-            const Icon = n.icon;
-            const telNumber = n.n.replace(/\s/g, "");
-            return (
-              <a key={i} href={`tel:${telNumber}`} className="rounded-2xl p-4 flex items-center gap-4 no-underline"
-                style={{ background: n.urgent ? `${C.red}1A` : C.card, border: `1px solid ${n.urgent ? C.red : C.border}` }}>
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: `${n.color}22` }}>
-                  <Icon size={20} color={n.color} />
-                </div>
-                <div className="flex-1 text-left">
-                  <p className="font-display font-bold text-white text-sm">{n.t}</p>
-                  <p className="font-display font-black text-lg" style={{ color: n.urgent ? C.red : "white" }}>{n.n}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: C.green }}>
-                  <Phone size={16} color="white" fill="white" />
-                </div>
-              </a>
-            );
-          })}
+        {/* Selector de estado */}
+        <div className="mb-3">
+          <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-2">Tu estado</p>
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+            {estados.map(e => (
+              <button key={e} onClick={() => setSelectedState(e)}
+                className="px-4 py-2 rounded-full font-display font-bold text-xs uppercase tracking-wider shrink-0 transition-all"
+                style={{
+                  background: selectedState === e ? C.blue : C.card,
+                  color: selectedState === e ? "white" : C.muted,
+                  border: `1px solid ${selectedState === e ? C.blue : C.border}`
+                }}>
+                {e}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {/* Búsqueda */}
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-2xl mb-4" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+          <Search size={14} color={C.muted} />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar (ej: mujer, ciber, secuestro)"
+            className="flex-1 min-w-0 bg-transparent text-white text-sm outline-none font-body placeholder:text-slate-500" />
+          {search && <button onClick={() => setSearch("")}><X size={14} color={C.muted} /></button>}
+        </div>
+
+        {!search && (
+          <>
+            <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-2">Nacionales (toda la república)</p>
+            <div className="flex flex-col gap-1.5 mb-4">
+              {nacionales.map(renderItem)}
+            </div>
+
+            <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-2">{selectedState}</p>
+            <div className="flex flex-col gap-1.5">
+              {localesAhora.length > 0 ? localesAhora.map(renderItem) : (
+                <p className="text-xs font-body p-4 text-center" style={{ color: C.muted }}>Próximamente más estados</p>
+              )}
+            </div>
+          </>
+        )}
+
+        {search && (
+          <>
+            <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-2">{filtrados.length} resultados</p>
+            <div className="flex flex-col gap-1.5">
+              {filtrados.length > 0 ? filtrados.map(renderItem) : (
+                <p className="text-xs font-body p-4 text-center" style={{ color: C.muted }}>Sin resultados. Prueba otro término.</p>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -2367,18 +2500,22 @@ const MenuDrawer = ({ open, onClose, onNav, onPanic }) => {
   const { state, dispatch, toast } = useApp();
   const items = [
     { id: "home", t: "Mapa", icon: MapPin },
-    { id: "route", t: "Crear Ruta", icon: Navigation2, badge: "Nuevo" },
-    { id: "assistant", t: "¿Qué hago ahora?", icon: Compass, highlight: false, badge: "Nuevo" },
+    { id: "route", t: "Crear Ruta", icon: Navigation2 },
+    { id: "assistant", t: "¿Qué hago ahora?", icon: Compass },
+    { id: "sos", t: "SOS de Emergencia", icon: Siren, badge: "Nuevo", highlightRed: true },
+    { id: "contactos", t: "Contactos de Confianza", icon: HeartPulse, badge: "Nuevo" },
+    { id: "derechos", t: "Mis Derechos", icon: Shield, badge: "Nuevo" },
+    { id: "hoynocircula", t: "Hoy No Circula", icon: Car, badge: "Nuevo" },
     { id: "trip", t: "Compartir Trayecto", icon: Footprints, highlight: !!state.trip },
     { id: "dashboard", t: "Mi Zona", icon: TrendingUp },
     { id: "scan", t: "Identificar Policía", icon: ScanLine },
-    { id: "verifier", t: "Verificar Patrulla", icon: Car, badge: "Nuevo" },
+    { id: "verifier", t: "Verificar Patrulla", icon: BadgeCheck },
     { id: "report", t: "Reportar Incidente", icon: FileText },
-    { id: "modus", t: "Alertas de Estafas", icon: ScrollText, badge: "Nuevo" },
+    { id: "modus", t: "Alertas de Estafas", icon: ScrollText },
     { id: "community", t: "Mi Comunidad", icon: Users },
-    { id: "denuncia", t: "Mis Denuncias", icon: Shield },
+    { id: "denuncia", t: "Mis Denuncias", icon: AlertCircle },
     { id: "protips", t: "Pro Tips", icon: BookOpen },
-    { id: "emergency", t: "Números de Emergencia", icon: PhoneCall },
+    { id: "emergency", t: "Directorio Oficial", icon: PhoneCall, badge: "Mejorado" },
   ];
   if (!open) return null;
   const activateStealth = () => {
@@ -2405,11 +2542,11 @@ const MenuDrawer = ({ open, onClose, onNav, onPanic }) => {
             <p className="text-sm font-display font-bold text-white">{state.user.name} · {state.user.points} pts</p>
           </div>
         </div>
-        <button onClick={() => { onPanic(); onClose(); }}
+        <button onClick={() => { onNav("sos"); onClose(); }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl mb-2"
           style={{ background: C.red, boxShadow: `0 6px 18px ${C.red}55` }}>
           <Siren size={18} color="white" />
-          <span className="text-sm font-display font-bold text-white uppercase tracking-wider">Botón de Pánico</span>
+          <span className="text-sm font-display font-bold text-white uppercase tracking-wider">Botón SOS</span>
         </button>
         <button onClick={activateStealth}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl mb-3"
@@ -2422,12 +2559,13 @@ const MenuDrawer = ({ open, onClose, onNav, onPanic }) => {
             const Icon = it.icon;
             return (
               <button key={it.id} onClick={() => { onNav(it.id); onClose(); }}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-white/5">
-                <Icon size={18} color={C.blue} />
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:bg-white/5"
+                style={it.highlightRed ? { background: `${C.red}15`, border: `1px solid ${C.red}55` } : {}}>
+                <Icon size={18} color={it.highlightRed ? C.red : C.blue} />
                 <span className="text-sm font-body text-white flex-1">{it.t}</span>
                 {it.badge && (
                   <span className="text-[8px] font-display font-black uppercase tracking-wider px-1.5 py-0.5 rounded"
-                    style={{ background: C.orange, color: "white" }}>
+                    style={{ background: it.highlightRed ? C.red : C.orange, color: "white" }}>
                     {it.badge}
                   </span>
                 )}
@@ -3194,6 +3332,924 @@ const PlateVerifierScreen = ({ onBack, onNav }) => {
 };
 
 // === BANCO DE MODUS OPERANDI ===
+const MisDerechosScreen = ({ onBack }) => {
+  const [tab, setTab] = useState("constitucion");
+  const [active, setActive] = useState(null);
+
+  const derechosConstitucionales = [
+    {
+      id: "detencion",
+      situacion: "Si me detiene la policía",
+      icon: Shield,
+      color: C.blue,
+      base: "Art. 16, 19 y 20 Constitución · Carta de Derechos del Detenido",
+      derechos: [
+        { d: "Conocer el motivo de tu detención", art: "Art. 20-B-I" },
+        { d: "Guardar silencio sin que se use en tu contra", art: "Art. 20-B-II" },
+        { d: "Recibir asistencia de abogado desde el inicio", art: "Art. 20-B-VIII" },
+        { d: "Hacer una llamada telefónica", art: "Carta de Derechos" },
+        { d: "Ser presentado al MP en máximo 48 horas", art: "Art. 16" },
+        { d: "Ser informado en idioma que comprendas (incluso si eres indígena)", art: "Art. 2 y 20-B-VII" },
+        { d: "Que NO te obliguen a declarar", art: "Art. 20-B-II" },
+        { d: "Que NO te aíslen ni torturen", art: "Art. 20-B-II" },
+      ],
+      argumentar: "Si no te leen tus derechos, dilo en voz alta y pídelo. Cualquier confesión obtenida sin abogado es ilegal."
+    },
+    {
+      id: "casa",
+      situacion: "Si quieren entrar a mi casa",
+      icon: Home,
+      color: C.green,
+      base: "Art. 16 Constitución",
+      derechos: [
+        { d: "Tu domicilio es INVIOLABLE", art: "Art. 16" },
+        { d: "Solo pueden entrar con orden de cateo de juez", art: "Art. 16" },
+        { d: "La orden debe describir QUÉ buscan y QUIÉN está autorizado", art: "Art. 16" },
+        { d: "Excepción: persecución de delito flagrante o riesgo de vida", art: "Jurisprudencia SCJN" },
+        { d: "Tienes derecho a leer la orden antes de permitir entrada", art: "Práctica común" },
+        { d: "Pueden ingresar dos testigos por tu parte", art: "Art. 16" },
+      ],
+      argumentar: "Pídeles ver la orden de cateo. Sin orden, NO pueden entrar a menos que sea delito flagrante. Si fuerzan entrada, denuncia ante CNDH."
+    },
+    {
+      id: "manifestacion",
+      situacion: "Si voy a una marcha o protesta",
+      icon: Megaphone,
+      color: C.orange,
+      base: "Art. 6, 7 y 9 Constitución",
+      derechos: [
+        { d: "Libertad de reunión y manifestación pacífica", art: "Art. 9" },
+        { d: "Libertad de expresión sin censura previa", art: "Art. 6" },
+        { d: "Libertad de prensa y registro de los hechos", art: "Art. 7" },
+        { d: "Derecho a grabar a policías en función pública", art: "Jurisprudencia SCJN" },
+        { d: "No te pueden detener solo por participar", art: "Art. 9" },
+        { d: "Si te detienen, deben ser MP no policía local", art: "Art. 21" },
+      ],
+      argumentar: "Si la marcha es pacífica, NO es delito. Lleva agua, identifícate como ciudadano observador, graba todo. Si te detienen, exige saber el delito específico."
+    },
+    {
+      id: "salud",
+      situacion: "Atención médica de urgencia",
+      icon: HeartPulse,
+      color: C.red,
+      base: "Art. 4 Constitución · Ley General de Salud",
+      derechos: [
+        { d: "TODA persona tiene derecho a la salud", art: "Art. 4" },
+        { d: "Las urgencias DEBEN atenderse SIN preguntar por dinero o derechohabiencia", art: "LGS Art. 71" },
+        { d: "Hospitales públicos y privados están obligados a estabilizar al paciente", art: "NOM-027-SSA3-2013" },
+        { d: "Si te niegan atención, es delito (negativa de servicio médico)", art: "Código Penal Federal" },
+        { d: "Embarazo: atención inmediata sin importar tu situación legal o económica", art: "Art. 4 y LGS" },
+        { d: "Niños y niñas: prioridad absoluta", art: "Art. 4 y LGDNNA" },
+      ],
+      argumentar: "Si te niegan atención: graba la negativa, pide nombre del médico, llama al 911 desde el lugar, presenta queja en COFEPRIS o CONAMED."
+    },
+    {
+      id: "trabajo",
+      situacion: "Si me despiden injustificadamente",
+      icon: Users,
+      color: C.amber,
+      base: "Art. 123 Constitución · LFT",
+      derechos: [
+        { d: "Si te despiden sin causa, tienes derecho a indemnización constitucional", art: "Art. 123-A-XXII" },
+        { d: "3 meses de salario + 20 días por año trabajado + prima de antigüedad", art: "LFT Art. 50" },
+        { d: "Aguinaldo proporcional al tiempo trabajado en el año", art: "LFT Art. 87" },
+        { d: "Prima vacacional y vacaciones no gozadas", art: "LFT" },
+        { d: "Tienes 2 meses para demandar a partir del despido", art: "LFT Art. 518" },
+        { d: "Tribunales laborales gratuitos, no necesitas abogado caro", art: "LFT" },
+      ],
+      argumentar: "Pide carta de despido por escrito. Si no te la dan, es despido injustificado. Acude a la Procuraduría de la Defensa del Trabajo (PROFEDET) — es gratis."
+    },
+    {
+      id: "consumidor",
+      situacion: "Como consumidor (servicios, productos)",
+      icon: ScrollText,
+      color: C.blue,
+      base: "Art. 28 Constitución · LFPC",
+      derechos: [
+        { d: "Información veraz y clara antes de comprar", art: "LFPC Art. 7" },
+        { d: "Productos defectuosos: reparación, reposición o devolución", art: "LFPC Art. 92" },
+        { d: "30 días naturales para reclamar productos nuevos", art: "LFPC Art. 92" },
+        { d: "Cancelar compras a distancia en 5 días hábiles sin penalización", art: "LFPC Art. 56" },
+        { d: "No te pueden negar el servicio por género, raza, edad, etc.", art: "LFPC Art. 58" },
+        { d: "PROFECO te ayuda GRATIS", art: "LFPC" },
+      ],
+      argumentar: "Guarda tickets y evidencia. Si un negocio se niega, llama a PROFECO al 55-5568-8722 o 800-468-8722. Es gratis y son rápidos."
+    },
+  ];
+
+  const reglamentoVialidad = [
+    {
+      id: "alcoholimetro",
+      situacion: "Alcoholímetro",
+      icon: AlertTriangle,
+      color: C.red,
+      base: "Reglamento de Tránsito CDMX Art. 38 (vigente 2026)",
+      derechos: [
+        { d: "El alcoholímetro DEBE estar calibrado y certificado", art: "RT Art. 38" },
+        { d: "Tienes derecho a una segunda prueba con otro aparato", art: "Derecho de defensa" },
+        { d: "Te deben informar tu resultado de inmediato", art: "RT" },
+        { d: "Límite permitido: 0.4 g/L en aliento (0.8 en sangre)", art: "RT" },
+        { d: "Si das positivo: 20-36 hrs de arresto sin fianza", art: "RT Art. 38-IV" },
+        { d: "NO pueden golpearte ni amenazarte", art: "Art. 19 Constitución" },
+      ],
+      argumentar: "Pide ver el certificado de calibración. Pide que se grabe el procedimiento. NO firmes nada que no entiendas. Pide hablar con un abogado de turno (defensoría pública)."
+    },
+    {
+      id: "infraccion",
+      situacion: "Me quieren poner una multa",
+      icon: FileText,
+      color: C.amber,
+      base: "Reglamento de Tránsito CDMX y Edomex",
+      derechos: [
+        { d: "Solo agentes UNIFORMADOS y AUTORIZADOS pueden infraccionar", art: "RT Art. 60" },
+        { d: "En CDMX: agentes SSC con banda en brazo 'Autorizado para infraccionar'", art: "RT" },
+        { d: "En Edomex: SOLO mujeres policías de tránsito están autorizadas (2025)", art: "Reforma Edomex" },
+        { d: "Te deben mostrar la multa DIGITAL en su dispositivo móvil", art: "RT" },
+        { d: "Tienes derecho a saber QUÉ artículo violaste", art: "Debido proceso" },
+        { d: "Puedes impugnar la multa en 30 días naturales", art: "RT" },
+        { d: "NO les pagues a ellos directamente - es extorsión", art: "Código Penal" },
+      ],
+      argumentar: "Di: '¿Cuál es su nombre, placa y unidad? ¿En qué artículo del reglamento se basa la multa? Muéstreme el dispositivo digital.' Si no responde claramente, es señal de extorsión. Graba todo."
+    },
+    {
+      id: "reten",
+      situacion: "Retén o filtro de revisión",
+      icon: Crosshair,
+      color: C.amber,
+      base: "Constitución Art. 16 · Jurisprudencia SCJN",
+      derechos: [
+        { d: "Retenes deben ser PERMANENTES, anunciados públicamente", art: "Jurisprudencia" },
+        { d: "Te pueden pedir identificación oficial", art: "Práctica legal" },
+        { d: "Para revisar tu vehículo necesitan tu autorización O sospecha fundada", art: "Art. 16" },
+        { d: "NO pueden retener tu identificación ni placas como 'garantía'", art: "Derecho de propiedad" },
+        { d: "Tienes derecho a NO bajar del vehículo a menos que sea delito flagrante", art: "Art. 16" },
+        { d: "Si te bajan: deben tener orden o flagrancia", art: "Art. 16" },
+      ],
+      argumentar: "Mantén la calma. Pide identificación del agente y motivo del retén. Si no es legal: 'Voy a hacer una llamada y a grabar este procedimiento, ¿hay algún problema?' Suelen retroceder."
+    },
+    {
+      id: "casco-cinturon",
+      situacion: "Casco, cinturón y bebés",
+      icon: Shield,
+      color: C.blue,
+      base: "Reglamento de Tránsito CDMX/Edomex",
+      derechos: [
+        { d: "Casco OBLIGATORIO en moto (conductor y pasajero)", art: "RT Art. 36" },
+        { d: "Cinturón OBLIGATORIO todos los pasajeros (incluso atrás)", art: "RT Art. 36" },
+        { d: "Niños menores de 12 años: silla porta infante", art: "RT Art. 36-VII" },
+        { d: "Bebés (0-1 año): silla en sentido contrario a la marcha", art: "NOM-194" },
+        { d: "Multa por no usar cinturón: 20 UMAs (~$2,200 MXN)", art: "RT" },
+        { d: "No usar casco en moto: invalida tu seguro en caso de accidente", art: "Práctica aseguradoras" },
+      ],
+      argumentar: "Estas multas SÍ son legales. Mejor cumplir. Si te detienen y SÍ usabas cinturón pero el oficial dice que no, pídele evidencia (foto/video del momento del paso)."
+    },
+    {
+      id: "velocidad",
+      situacion: "Multa por exceso de velocidad",
+      icon: Zap,
+      color: C.red,
+      base: "Reglamento de Tránsito CDMX/Edomex",
+      derechos: [
+        { d: "Radar debe estar calibrado y certificado", art: "RT" },
+        { d: "Deben mostrarte la fotografía con datos: fecha, hora, lugar, velocidad", art: "Debido proceso" },
+        { d: "La foto debe ser clara y mostrar tus placas legibles", art: "Debido proceso" },
+        { d: "Límites vigentes: zonas escolares 20km/h, vías secundarias 40-50, primarias 50-70, autopistas urbanas 80", art: "RT Art. 9" },
+        { d: "Photoradares en CDMX deben estar señalizados antes", art: "RT" },
+      ],
+      argumentar: "Pide ver la fotografía completa con metadatos. Verifica que la placa coincide con tu auto. Si la foto está borrosa o no se distingue el vehículo, es razón para impugnar."
+    },
+    {
+      id: "documentos",
+      situacion: "Documentos del vehículo",
+      icon: FileText,
+      color: C.blue,
+      base: "Reglamento de Tránsito y Hacienda",
+      derechos: [
+        { d: "Licencia vigente del conductor", art: "RT" },
+        { d: "Tarjeta de circulación al corriente", art: "RT" },
+        { d: "Verificación vehicular vigente (CDMX/Edomex)", art: "NOM" },
+        { d: "Seguro de responsabilidad civil OBLIGATORIO en carreteras federales", art: "Ley Federal" },
+        { d: "Placas legibles y a la vista (frontal y trasera)", art: "RT" },
+        { d: "Refrendo y tenencia pagados (donde aplique)", art: "Hacienda" },
+      ],
+      argumentar: "Lleva los documentos físicos O digitales (apps oficiales). Si te piden retener placas como 'garantía' de pago, es ilegal: las placas son tuyas hasta que un juez determine lo contrario."
+    },
+  ];
+
+  const items = tab === "constitucion" ? derechosConstitucionales : reglamentoVialidad;
+
+  if (active) {
+    const Icon = active.icon;
+    return (
+      <div className="h-full flex flex-col" style={{ background: C.bg }}>
+        <StatusBar />
+        <Header onBack={() => setActive(null)} title="MIS DERECHOS" />
+        <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6">
+          <div className="rounded-3xl p-5 mb-4" style={{ background: `${active.color}1A`, border: `2px solid ${active.color}` }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-3" style={{ background: active.color }}>
+              <Icon size={26} color="white" />
+            </div>
+            <p className="font-display font-black text-xl text-white leading-tight mb-1">{active.situacion}</p>
+            <p className="text-[10px] font-body" style={{ color: C.muted }}>{active.base}</p>
+          </div>
+
+          <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white mb-3">Tus derechos</p>
+          <div className="flex flex-col gap-2 mb-4">
+            {active.derechos.map((d, i) => (
+              <div key={i} className="rounded-2xl p-3 flex items-start gap-3" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ background: active.color }}>
+                  <Check size={12} color="white" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-body text-white leading-relaxed">{d.d}</p>
+                  <p className="text-[10px] font-display font-bold uppercase tracking-wider mt-0.5" style={{ color: active.color }}>{d.art}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-3xl p-4" style={{ background: `${C.green}15`, border: `1px solid ${C.green}55` }}>
+            <div className="flex items-center gap-2 mb-2">
+              <Megaphone size={16} color={C.green} />
+              <p className="font-display font-bold text-[10px] uppercase tracking-widest" style={{ color: C.green }}>Cómo argumentar</p>
+            </div>
+            <p className="text-sm font-body text-white leading-relaxed">{active.argumentar}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col" style={{ background: C.bg }}>
+      <StatusBar />
+      <Header onBack={onBack} title="MIS DERECHOS" />
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6">
+        <p className="text-xs font-body mb-3" style={{ color: C.muted }}>
+          Conoce tus derechos para defenderte de abuso de autoridad o de quien quiera intimidarte.
+        </p>
+
+        {/* Tabs */}
+        <div className="flex gap-2 mb-4">
+          <button onClick={() => setTab("constitucion")}
+            className="flex-1 py-2.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all"
+            style={{
+              background: tab === "constitucion" ? C.blue : C.card,
+              color: tab === "constitucion" ? "white" : C.muted,
+              border: `1px solid ${tab === "constitucion" ? C.blue : C.border}`
+            }}>
+            Constitución
+          </button>
+          <button onClick={() => setTab("vialidad")}
+            className="flex-1 py-2.5 rounded-2xl font-display font-bold text-xs uppercase tracking-wider transition-all"
+            style={{
+              background: tab === "vialidad" ? C.blue : C.card,
+              color: tab === "vialidad" ? "white" : C.muted,
+              border: `1px solid ${tab === "vialidad" ? C.blue : C.border}`
+            }}>
+            Reglamento Vialidad
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          {items.map(it => {
+            const Icon = it.icon;
+            return (
+              <button key={it.id} onClick={() => setActive(it)}
+                className="rounded-2xl p-4 flex items-center gap-3 text-left transition-all"
+                style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: `${it.color}22` }}>
+                  <Icon size={20} color={it.color} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-bold text-white text-sm leading-tight">{it.situacion}</p>
+                  <p className="text-[10px] font-body truncate mt-0.5" style={{ color: C.muted }}>{it.base}</p>
+                </div>
+                <ChevronRight size={16} color={C.muted} className="shrink-0" />
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-2xl p-3 mt-4" style={{ background: `${C.amber}15`, border: `1px solid ${C.amber}55` }}>
+          <div className="flex items-start gap-2">
+            <AlertCircle size={14} color={C.amber} className="shrink-0 mt-0.5" />
+            <p className="text-[11px] font-body" style={{ color: "white" }}>
+              <span style={{ color: C.amber, fontWeight: 700 }}>Importante:</span> Esta información es orientativa. Para casos específicos consulta un abogado. ProAlert no sustituye asesoría legal profesional.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ContactosScreen = ({ onBack }) => {
+  const { toast } = useApp();
+  const [contacts, setContacts] = useState([]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [relacion, setRelacion] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proalert_contacts");
+      if (saved) setContacts(JSON.parse(saved));
+    } catch {}
+  }, []);
+  const save = (arr) => {
+    setContacts(arr);
+    try { localStorage.setItem("proalert_contacts", JSON.stringify(arr)); } catch {}
+  };
+
+  const addContact = () => {
+    if (!name.trim() || !phone.trim()) {
+      toast("Falta nombre o teléfono");
+      return;
+    }
+    if (contacts.length >= 5) {
+      toast("Máximo 5 contactos");
+      return;
+    }
+    save([...contacts, { id: Date.now(), name: name.trim(), phone: phone.trim().replace(/\s/g, ""), relacion: relacion.trim() || "Contacto" }]);
+    setName(""); setPhone(""); setRelacion(""); setShowAdd(false);
+    toast(`${name.trim()} agregado a tu red`);
+  };
+
+  const remove = (id) => save(contacts.filter(c => c.id !== id));
+
+  return (
+    <div className="h-full flex flex-col" style={{ background: C.bg }}>
+      <StatusBar />
+      <Header onBack={onBack} title="CONTACTOS DE CONFIANZA" />
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6">
+        <div className="rounded-2xl p-3 mb-4" style={{ background: `${C.pink}15`, border: `1px solid ${C.pink}55` }}>
+          <div className="flex items-start gap-2">
+            <HeartPulse size={16} color={C.pink} className="shrink-0 mt-0.5" />
+            <p className="text-[11px] font-body text-white leading-relaxed">
+              Estas personas recibirán tu ubicación y un mensaje automático cuando actives el botón SOS. <span style={{ color: C.pink, fontWeight: 700 }}>Hasta 5 contactos.</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between mb-3">
+          <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white">Mi red ({contacts.length}/5)</p>
+          {!showAdd && contacts.length < 5 && (
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-full"
+              style={{ background: C.pink }}>
+              <Plus size={12} color="white" />
+              <span className="text-[10px] font-display font-bold uppercase text-white">Agregar</span>
+            </button>
+          )}
+        </div>
+
+        {showAdd && (
+          <div className="rounded-2xl p-4 mb-3" style={{ background: C.card, border: `1px solid ${C.pink}` }}>
+            <p className="text-[10px] font-display font-bold uppercase tracking-wider text-white mb-2">Nombre</p>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="Ej: Mamá"
+              className="w-full px-3 py-2.5 rounded-xl text-white text-sm outline-none mb-3 font-body"
+              style={{ background: C.bg, border: `1px solid ${C.border}` }} />
+
+            <p className="text-[10px] font-display font-bold uppercase tracking-wider text-white mb-2">Teléfono (10 dígitos)</p>
+            <input value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ""))} type="tel" placeholder="5512345678" maxLength={10}
+              className="w-full px-3 py-2.5 rounded-xl text-white text-sm outline-none mb-3 font-body"
+              style={{ background: C.bg, border: `1px solid ${C.border}` }} />
+
+            <p className="text-[10px] font-display font-bold uppercase tracking-wider text-white mb-2">Relación</p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {["Familia", "Pareja", "Amig@", "Vecin@", "Trabajo", "Otro"].map(r => (
+                <button key={r} onClick={() => setRelacion(r)}
+                  className="py-2 rounded-xl font-display font-bold text-[11px] transition-all"
+                  style={{
+                    background: relacion === r ? C.pink : C.bg,
+                    color: relacion === r ? "white" : C.muted,
+                    border: `1px solid ${relacion === r ? C.pink : C.border}`
+                  }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-2">
+              <button onClick={() => { setShowAdd(false); setName(""); setPhone(""); setRelacion(""); }}
+                className="flex-1 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider"
+                style={{ background: C.card, border: `1px solid ${C.border}`, color: "white" }}>
+                Cancelar
+              </button>
+              <button onClick={addContact} disabled={!name.trim() || !phone.trim()}
+                className="flex-1 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider text-white"
+                style={{ background: name.trim() && phone.trim() ? C.pink : C.card, opacity: name.trim() && phone.trim() ? 1 : 0.5 }}>
+                Guardar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {contacts.length === 0 && !showAdd ? (
+          <div className="rounded-2xl p-6 text-center" style={{ background: C.card, border: `1px dashed ${C.border}` }}>
+            <Users size={28} color={C.muted} className="mx-auto mb-2" />
+            <p className="font-display font-bold text-white text-sm mb-1">Sin contactos aún</p>
+            <p className="text-xs font-body" style={{ color: C.muted }}>Agrega hasta 5 personas que serán tu red en emergencias</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {contacts.map(c => (
+              <div key={c.id} className="rounded-2xl p-3 flex items-center gap-3" style={{ background: C.card, border: `1px solid ${C.border}` }}>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0" style={{ background: `${C.pink}33` }}>
+                  <User size={18} color={C.pink} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-bold text-white text-sm">{c.name}</p>
+                  <p className="text-[10px] font-body" style={{ color: C.muted }}>{c.relacion} · {c.phone}</p>
+                </div>
+                <a href={`tel:${c.phone}`} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.green }}>
+                  <Phone size={14} color="white" fill="white" />
+                </a>
+                <button onClick={() => remove(c.id)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: C.cardHi }}>
+                  <X size={12} color={C.muted} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="rounded-2xl p-3 mt-4" style={{ background: `${C.blue}15`, border: `1px solid ${C.blue}55` }}>
+          <div className="flex items-start gap-2">
+            <Shield size={14} color={C.blue} className="shrink-0 mt-0.5" />
+            <p className="text-[11px] font-body text-white leading-relaxed">
+              <span style={{ color: C.blue, fontWeight: 700 }}>Privacidad:</span> Tus contactos se guardan SOLO en tu dispositivo. ProAlert no los comparte ni los sube a ningún servidor.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SOSScreen = ({ onBack, onNav }) => {
+  const { toast } = useApp();
+  const [counting, setCounting] = useState(false);
+  const [count, setCount] = useState(5);
+  const [sent, setSent] = useState(false);
+  const [userPos, setUserPos] = useState(null);
+  const [contacts, setContacts] = useState([]);
+  const intervalRef = useRef(null);
+
+  // Cargar contactos
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proalert_contacts");
+      if (saved) setContacts(JSON.parse(saved));
+    } catch {}
+  }, []);
+
+  // Obtener ubicación precisa
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy]),
+      () => {},
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, []);
+
+  // Cuenta regresiva
+  useEffect(() => {
+    if (!counting) return;
+    intervalRef.current = setInterval(() => {
+      setCount(c => {
+        if (c <= 1) {
+          clearInterval(intervalRef.current);
+          executeSOS();
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(intervalRef.current);
+  }, [counting]);
+
+  const startCount = () => {
+    setCount(5);
+    setCounting(true);
+    // Vibrar si es posible
+    try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch {}
+  };
+
+  const cancelCount = () => {
+    clearInterval(intervalRef.current);
+    setCounting(false);
+    setCount(5);
+    toast("SOS cancelado");
+  };
+
+  const executeSOS = () => {
+    setSent(true);
+    // Vibración fuerte
+    try { navigator.vibrate && navigator.vibrate([500, 200, 500, 200, 500]); } catch {}
+
+    // Construir mensaje con Google Maps link
+    const lat = userPos ? userPos[0].toFixed(6) : "?";
+    const lng = userPos ? userPos[1].toFixed(6) : "?";
+    const mapUrl = userPos ? `https://maps.google.com/?q=${lat},${lng}` : "ubicación desconocida";
+    const mensaje = `🚨 SOS - PROALERT 🚨\n\nNecesito ayuda. Mi ubicación actual:\n${mapUrl}\n\nLat: ${lat}, Lng: ${lng}\nHora: ${new Date().toLocaleTimeString("es-MX")}\n\nMensaje enviado automáticamente desde ProAlert.`;
+
+    // Si hay contactos, abrir SMS con TODOS
+    if (contacts.length > 0) {
+      const phones = contacts.map(c => c.phone).join(",");
+      const smsUrl = `sms:${phones}?body=${encodeURIComponent(mensaje)}`;
+      try {
+        window.location.href = smsUrl;
+      } catch {}
+      toast(`SOS enviado a ${contacts.length} contacto${contacts.length > 1 ? "s" : ""}`);
+    } else {
+      toast("No tienes contactos · llama al 911");
+    }
+
+    // Reset después de 5 segundos para volver a usar
+    setTimeout(() => {
+      setSent(false);
+      setCounting(false);
+      setCount(5);
+    }, 5000);
+  };
+
+  const llamar911 = () => {
+    window.location.href = "tel:911";
+  };
+
+  // Render
+  if (sent) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center px-6" style={{ background: `radial-gradient(circle at 50% 50%, ${C.red}33 0%, ${C.bg} 70%)` }}>
+        <div className="relative mb-6">
+          <div className="absolute inset-0 rounded-full" style={{ background: C.red, opacity: 0.3, animation: "ping 1.5s ease-out infinite" }} />
+          <div className="relative w-24 h-24 rounded-full flex items-center justify-center" style={{ background: C.red, boxShadow: `0 0 40px ${C.red}` }}>
+            <BadgeCheck size={48} color="white" />
+          </div>
+        </div>
+        <p className="font-display font-black text-3xl text-white text-center mb-2">SOS ACTIVADO</p>
+        <p className="text-base font-body text-center mb-6" style={{ color: C.muted }}>
+          {contacts.length > 0 ? `Mensaje enviado a tus ${contacts.length} contacto${contacts.length > 1 ? "s" : ""}` : "Llama al 911 si necesitas ayuda inmediata"}
+        </p>
+        <a href="tel:911" className="w-full max-w-xs py-4 rounded-2xl font-display font-black text-white text-base uppercase tracking-widest flex items-center justify-center gap-2 mb-3"
+          style={{ background: C.red, boxShadow: `0 8px 24px ${C.red}88` }}>
+          <Phone size={20} fill="white" />Llamar al 911
+        </a>
+        <button onClick={onBack} className="text-sm font-display font-bold uppercase tracking-wider" style={{ color: C.muted }}>
+          Cerrar
+        </button>
+      </div>
+    );
+  }
+
+  if (counting) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center px-6" style={{ background: `radial-gradient(circle at 50% 50%, ${C.red}55 0%, ${C.bg} 70%)` }}>
+        <p className="font-display font-bold text-sm text-white uppercase tracking-widest mb-4">Enviando SOS en</p>
+        <div className="relative mb-8">
+          <div className="absolute inset-0 rounded-full" style={{ background: C.red, opacity: 0.4, animation: "ping 1s ease-out infinite" }} />
+          <div className="relative w-44 h-44 rounded-full flex items-center justify-center" style={{ background: C.red, boxShadow: `0 0 60px ${C.red}` }}>
+            <p className="font-display font-black text-7xl text-white">{count}</p>
+          </div>
+        </div>
+        <p className="text-base font-body text-center mb-8" style={{ color: C.muted }}>
+          Toca CANCELAR si lo activaste por accidente
+        </p>
+        <button onClick={cancelCount}
+          className="w-full max-w-xs py-4 rounded-2xl font-display font-black text-white text-base uppercase tracking-widest"
+          style={{ background: C.cardHi, border: `2px solid white`, boxShadow: `0 8px 24px rgba(255,255,255,0.2)` }}>
+          ✕ CANCELAR
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col" style={{ background: C.bg }}>
+      <StatusBar />
+      <Header onBack={onBack} title="SOS DE EMERGENCIA" />
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6">
+        <div className="rounded-2xl p-3 mb-4" style={{ background: `${C.red}15`, border: `1px solid ${C.red}55` }}>
+          <div className="flex items-start gap-2">
+            <AlertTriangle size={16} color={C.red} className="shrink-0 mt-0.5" />
+            <p className="text-[11px] font-body text-white leading-relaxed">
+              Al activar SOS: cuenta regresiva de 5 segundos, después <span style={{ color: C.red, fontWeight: 700 }}>se envía SMS automático</span> con tu ubicación exacta a tus contactos de confianza.
+            </p>
+          </div>
+        </div>
+
+        {/* Status ubicación */}
+        <div className="rounded-2xl p-3 mb-3" style={{ background: C.card, border: `1px solid ${userPos ? C.green : C.amber}` }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: userPos ? `${C.green}22` : `${C.amber}22` }}>
+              <MapPin size={18} color={userPos ? C.green : C.amber} />
+            </div>
+            <div className="flex-1">
+              <p className="font-display font-bold text-white text-sm">{userPos ? "Ubicación lista" : "Obteniendo GPS..."}</p>
+              {userPos && <p className="text-[10px] font-body" style={{ color: C.muted }}>Precisión {Math.round(userPos[2])}m · {userPos[0].toFixed(4)}, {userPos[1].toFixed(4)}</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* Status contactos */}
+        <div className="rounded-2xl p-3 mb-4 cursor-pointer" onClick={() => onNav("contactos")}
+          style={{ background: C.card, border: `1px solid ${contacts.length > 0 ? C.green : C.amber}` }}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: contacts.length > 0 ? `${C.green}22` : `${C.amber}22` }}>
+              <Users size={18} color={contacts.length > 0 ? C.green : C.amber} />
+            </div>
+            <div className="flex-1">
+              <p className="font-display font-bold text-white text-sm">
+                {contacts.length === 0 ? "Sin contactos de confianza" : `${contacts.length} contacto${contacts.length > 1 ? "s" : ""} en tu red`}
+              </p>
+              <p className="text-[10px] font-body" style={{ color: C.muted }}>
+                {contacts.length === 0 ? "Agrega antes de activar SOS" : "Toca para editar tu red"}
+              </p>
+            </div>
+            <ChevronRight size={16} color={C.muted} />
+          </div>
+        </div>
+
+        {/* Botón principal SOS */}
+        <button onClick={startCount}
+          className="w-full py-8 rounded-3xl font-display font-black text-white text-2xl uppercase tracking-widest mb-3 flex flex-col items-center justify-center gap-3"
+          style={{
+            background: `linear-gradient(135deg, ${C.red}, #B91C1C)`,
+            boxShadow: `0 12px 36px ${C.red}88`
+          }}>
+          <Siren size={48} color="white" />
+          ACTIVAR SOS
+          <span className="text-xs font-display font-bold uppercase tracking-wider opacity-90">Mantén presionado</span>
+        </button>
+
+        {/* Llamada directa 911 */}
+        <a href="tel:911" className="w-full py-4 rounded-2xl font-display font-bold text-white text-sm uppercase tracking-widest flex items-center justify-center gap-2 mb-2"
+          style={{ background: C.card, border: `2px solid ${C.red}` }}>
+          <Phone size={16} color={C.red} />
+          Llamar directamente al 911
+        </a>
+
+        <button onClick={() => onNav("women")} className="w-full py-3 rounded-2xl font-display font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+          style={{ background: C.card, border: `1px solid ${C.pink}`, color: "white" }}>
+          <Heart size={14} color={C.pink} fill={C.pink} />
+          Alerta Mujer
+        </button>
+
+        <div className="rounded-2xl p-3 mt-4" style={{ background: `${C.blue}15`, border: `1px solid ${C.blue}55` }}>
+          <div className="flex items-start gap-2">
+            <Shield size={14} color={C.blue} className="shrink-0 mt-0.5" />
+            <p className="text-[11px] font-body text-white leading-relaxed">
+              <span style={{ color: C.blue, fontWeight: 700 }}>Cómo funciona:</span> Al activar SOS, se abrirá la app de SMS de tu celular con un mensaje pre-armado que incluye tu ubicación. Solo tienes que tocar enviar. Funciona incluso sin datos móviles si tienes señal.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HoyNoCirculaScreen = ({ onBack }) => {
+  const { toast } = useApp();
+  const [plates, setPlates] = useState([]);
+  const [newPlate, setNewPlate] = useState("");
+  const [holograma, setHolograma] = useState("0");
+  const [showAdd, setShowAdd] = useState(false);
+
+  // Cargar/guardar placas en localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proalert_plates");
+      if (saved) setPlates(JSON.parse(saved));
+    } catch {}
+  }, []);
+  const saveAll = (arr) => {
+    setPlates(arr);
+    try { localStorage.setItem("proalert_plates", JSON.stringify(arr)); } catch {}
+  };
+
+  const addPlate = () => {
+    const clean = newPlate.trim().toUpperCase().replace(/\s/g, "");
+    if (!clean) return;
+    if (plates.find(p => p.plate === clean)) {
+      toast("Esa placa ya está registrada");
+      return;
+    }
+    saveAll([...plates, { plate: clean, holograma, addedAt: Date.now() }]);
+    setNewPlate("");
+    setHolograma("0");
+    setShowAdd(false);
+    toast(`Placa ${clean} agregada`);
+  };
+
+  const removePlate = (plate) => saveAll(plates.filter(p => p.plate !== plate));
+
+  // Calcular si circula hoy
+  const hoy = new Date();
+  const diaSemana = hoy.getDay(); // 0=Domingo
+  const diasNombre = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+  // Reglas Hoy No Circula CDMX/Edomex 2026
+  // Holograma 0 y 00: NO aplica
+  // Holograma 1: lunes (plac 5,6) - jueves (7,8) - martes (3,4) - viernes (9,0) - miércoles (1,2)
+  // Holograma 2: misma regla + sábados según último dígito
+  const getRestriccion = (plateStr, holo) => {
+    if (holo === "0" || holo === "00") return null; // Exento
+    const lastDigit = (plateStr.match(/\d/g) || []).slice(-1)[0];
+    if (!lastDigit) return null;
+    const d = parseInt(lastDigit, 10);
+    // Día restricción según último dígito
+    let diaRestriccion = null;
+    if (d === 5 || d === 6) diaRestriccion = 1; // Lunes
+    else if (d === 7 || d === 8) diaRestriccion = 2; // Martes
+    else if (d === 3 || d === 4) diaRestriccion = 3; // Miércoles
+    else if (d === 1 || d === 2) diaRestriccion = 4; // Jueves
+    else if (d === 9 || d === 0) diaRestriccion = 5; // Viernes
+    // Holograma 2 también aplica sábado
+    let restriccionSabado = null;
+    if (holo === "2") {
+      if ([5,6,7,8].includes(d)) restriccionSabado = 6; // 1er y 3er sábado
+      else if ([1,2,3,4,9,0].includes(d)) restriccionSabado = 6; // 2do y 4to sábado
+    }
+    return { diaRestriccion, restriccionSabado, lastDigit: d };
+  };
+
+  // Próxima verificación: cada 6 meses según último dígito + holograma
+  // Calendario CDMX/Edomex
+  const getVerificacionMes = (plateStr) => {
+    const lastDigit = (plateStr.match(/\d/g) || []).slice(-1)[0];
+    if (!lastDigit) return "—";
+    const d = parseInt(lastDigit, 10);
+    // Pares: ene-feb / jul-ago; Impares: feb-mar/ago-sept (aproximado)
+    const map = {
+      1: "Febrero · Agosto", 2: "Febrero · Agosto",
+      3: "Marzo · Septiembre", 4: "Marzo · Septiembre",
+      5: "Abril · Octubre", 6: "Abril · Octubre",
+      7: "Mayo · Noviembre", 8: "Mayo · Noviembre",
+      9: "Junio · Diciembre", 0: "Junio · Diciembre",
+    };
+    return map[d] || "—";
+  };
+
+  const renderPlateCard = (p) => {
+    const res = getRestriccion(p.plate, p.holograma);
+    const noCirculaHoy = res && (res.diaRestriccion === diaSemana || (res.restriccionSabado === diaSemana));
+    const exento = !res;
+    return (
+      <div key={p.plate} className="rounded-2xl p-4 mb-2"
+        style={{ background: exento ? `${C.green}15` : noCirculaHoy ? `${C.red}1A` : `${C.green}15`, border: `2px solid ${exento ? C.green : noCirculaHoy ? C.red : C.green}` }}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-lg" style={{ background: "white" }}>
+              <p className="font-display font-black text-base" style={{ color: "#000", letterSpacing: "0.05em" }}>{p.plate}</p>
+            </div>
+            <div className="px-2 py-1 rounded" style={{ background: C.cardHi }}>
+              <p className="text-[10px] font-display font-bold text-white">HOL {p.holograma}</p>
+            </div>
+          </div>
+          <button onClick={() => removePlate(p.plate)} className="w-7 h-7 rounded-full flex items-center justify-center"
+            style={{ background: C.cardHi }}>
+            <X size={12} color={C.muted} />
+          </button>
+        </div>
+
+        <div className="mb-2">
+          {exento ? (
+            <div className="flex items-center gap-2">
+              <BadgeCheck size={16} color={C.green} />
+              <p className="font-display font-bold text-sm" style={{ color: C.green }}>Exento - Circula todos los días</p>
+            </div>
+          ) : noCirculaHoy ? (
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} color={C.red} />
+              <p className="font-display font-bold text-sm" style={{ color: C.red }}>HOY NO CIRCULA</p>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <BadgeCheck size={16} color={C.green} />
+              <p className="font-display font-bold text-sm" style={{ color: C.green }}>Circula hoy {diasNombre[diaSemana]}</p>
+            </div>
+          )}
+        </div>
+
+        {!exento && res && (
+          <div className="grid grid-cols-2 gap-2 pt-3" style={{ borderTop: `1px solid ${C.border}` }}>
+            <div>
+              <p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>No circula los</p>
+              <p className="text-xs font-display font-bold text-white">{diasNombre[res.diaRestriccion]}{res.restriccionSabado ? ` · Sábados` : ""}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-display uppercase tracking-wider" style={{ color: C.muted }}>Verificación</p>
+              <p className="text-xs font-display font-bold text-white">{getVerificacionMes(p.plate)}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="h-full flex flex-col" style={{ background: C.bg }}>
+      <StatusBar />
+      <Header onBack={onBack} title="HOY NO CIRCULA" />
+      <div className="flex-1 overflow-y-auto hide-scrollbar px-4 pb-6">
+        {/* Banner del día */}
+        <div className="rounded-3xl p-4 mb-4" style={{ background: `linear-gradient(135deg, ${C.blue}, ${C.blueDark})` }}>
+          <p className="text-[10px] font-display uppercase tracking-wider text-white opacity-80">Hoy</p>
+          <p className="font-display font-black text-2xl text-white leading-tight">{diasNombre[diaSemana]}</p>
+          <p className="text-xs font-body text-white opacity-90 mt-1">
+            {diaSemana === 0 ? "Domingo · TODOS circulan" :
+             diaSemana === 6 ? "Sábado · Aplica a holograma 2" :
+             `Aplica restricción del día`}
+          </p>
+        </div>
+
+        {/* Mis placas */}
+        <div className="flex items-center justify-between mb-2">
+          <p className="font-display font-bold text-[10px] uppercase tracking-widest text-white">Mis vehículos</p>
+          {!showAdd && (
+            <button onClick={() => setShowAdd(true)} className="flex items-center gap-1 px-3 py-1.5 rounded-full"
+              style={{ background: C.blue }}>
+              <Plus size={12} color="white" />
+              <span className="text-[10px] font-display font-bold uppercase text-white">Agregar</span>
+            </button>
+          )}
+        </div>
+
+        {/* Agregar placa */}
+        {showAdd && (
+          <div className="rounded-2xl p-3 mb-3" style={{ background: C.card, border: `1px solid ${C.blue}` }}>
+            <p className="text-[10px] font-display font-bold uppercase tracking-wider text-white mb-2">Nueva placa</p>
+            <input value={newPlate} onChange={e => setNewPlate(e.target.value.toUpperCase())}
+              placeholder="Ej: ABC-1234"
+              maxLength={10}
+              className="w-full px-3 py-2.5 rounded-xl text-white text-center font-display font-black text-lg outline-none mb-3"
+              style={{ background: C.bg, border: `1px solid ${C.border}`, letterSpacing: "0.1em" }} />
+            <p className="text-[10px] font-display font-bold uppercase tracking-wider text-white mb-2">Tu holograma</p>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {["00", "0", "1", "2"].map(h => (
+                <button key={h} onClick={() => setHolograma(h)}
+                  className="py-2 rounded-xl font-display font-black text-sm transition-all"
+                  style={{
+                    background: holograma === h ? C.blue : C.bg,
+                    color: holograma === h ? "white" : C.muted,
+                    border: `1px solid ${holograma === h ? C.blue : C.border}`
+                  }}>
+                  {h}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] font-body mb-3" style={{ color: C.muted }}>00 y 0: exentos · 1: una restricción/sem · 2: dos restricciones</p>
+            <div className="flex gap-2">
+              <button onClick={() => { setShowAdd(false); setNewPlate(""); }}
+                className="flex-1 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider"
+                style={{ background: C.card, border: `1px solid ${C.border}`, color: "white" }}>
+                Cancelar
+              </button>
+              <button onClick={addPlate} disabled={!newPlate.trim()}
+                className="flex-1 py-2.5 rounded-xl font-display font-bold text-xs uppercase tracking-wider text-white"
+                style={{ background: newPlate.trim() ? C.blue : C.card, opacity: newPlate.trim() ? 1 : 0.5 }}>
+                Guardar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de placas */}
+        {plates.length === 0 && !showAdd ? (
+          <div className="rounded-2xl p-6 text-center" style={{ background: C.card, border: `1px dashed ${C.border}` }}>
+            <Car size={28} color={C.muted} className="mx-auto mb-2" />
+            <p className="font-display font-bold text-white text-sm mb-1">Sin vehículos registrados</p>
+            <p className="text-xs font-body" style={{ color: C.muted }}>Agrega tu placa para saber si circula hoy y cuándo verificar</p>
+          </div>
+        ) : (
+          plates.map(renderPlateCard)
+        )}
+
+        {/* Info adicional */}
+        <div className="rounded-2xl p-3 mt-4" style={{ background: `${C.amber}15`, border: `1px solid ${C.amber}55` }}>
+          <div className="flex items-start gap-2">
+            <AlertCircle size={14} color={C.amber} className="shrink-0 mt-0.5" />
+            <p className="text-[11px] font-body" style={{ color: "white" }}>
+              <span style={{ color: C.amber, fontWeight: 700 }}>Multa por violar Hoy No Circula:</span> 20-30 UMAs (~$2,200-$3,300 MXN). Aplica en CDMX y municipios de Edomex.
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl p-3 mt-2" style={{ background: `${C.blue}15`, border: `1px solid ${C.blue}55` }}>
+          <div className="flex items-start gap-2">
+            <Clock size={14} color={C.blue} className="shrink-0 mt-0.5" />
+            <p className="text-[11px] font-body" style={{ color: "white" }}>
+              <span style={{ color: C.blue, fontWeight: 700 }}>Horario:</span> 5:00 a 22:00 hrs. Después de las 10pm circulan todas.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ModusOperandiScreen = ({ onBack, onNav }) => {
   const { state } = useApp();
   const [active, setActive] = useState(null);
@@ -3953,6 +5009,10 @@ export default function ProAlertApp() {
       case "route": return <RouteScreen onBack={goBack} onNav={setScreen} />;
       case "assistant": return <AssistantScreen onBack={goBack} onNav={setScreen} onPanic={goPanic} />;
       case "verifier": return <PlateVerifierScreen onBack={goBack} onNav={setScreen} />;
+      case "hoynocircula": return <HoyNoCirculaScreen onBack={goBack} />;
+      case "derechos": return <MisDerechosScreen onBack={goBack} />;
+      case "sos": return <SOSScreen onBack={goBack} onNav={setScreen} />;
+      case "contactos": return <ContactosScreen onBack={goBack} />;
       case "modus": return <ModusOperandiScreen onBack={goBack} onNav={setScreen} />;
       default: return <HomeScreen onNav={setScreen} onMenu={() => setMenuOpen(true)} onPanic={goPanic} onWomen={goWomen} />;
     }
