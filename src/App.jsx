@@ -288,6 +288,51 @@ const MapView = () => {
     return () => window.removeEventListener("proalert_locate", handler);
   }, []);
 
+  // Modo navegación 3D (escucha startnav/stopnav)
+  const navModeRef = useRef(false);
+  useEffect(() => {
+    const startNav3D = () => {
+      if (!mapRef.current) return;
+      navModeRef.current = true;
+      try {
+        // Inclinar mapa 3D estilo Waze
+        mapRef.current.easeTo({
+          pitch: 60,
+          zoom: 16.5,
+          duration: 1200,
+        });
+      } catch {}
+    };
+    const stopNav3D = () => {
+      if (!mapRef.current) return;
+      navModeRef.current = false;
+      try {
+        mapRef.current.easeTo({
+          pitch: 0,
+          zoom: 14,
+          duration: 800,
+        });
+      } catch {}
+    };
+    window.addEventListener("proalert_startnav", startNav3D);
+    window.addEventListener("proalert_stopnav", stopNav3D);
+    return () => {
+      window.removeEventListener("proalert_startnav", startNav3D);
+      window.removeEventListener("proalert_stopnav", stopNav3D);
+    };
+  }, []);
+
+  // Cuando estamos en navMode, el mapa sigue al usuario
+  useEffect(() => {
+    if (!userPos || !mapRef.current || !navModeRef.current) return;
+    try {
+      mapRef.current.easeTo({
+        center: [userPos[1], userPos[0]],
+        duration: 800,
+      });
+    } catch {}
+  }, [userPos]);
+
   useEffect(() => {
     const drawRoute = (e) => {
       if (!mapRef.current || !e.detail) return;
@@ -639,13 +684,380 @@ const MapView = () => {
   );
 };
 
+// === NAVIGATION PANEL (paso a paso tipo Waze) ===
+// Calcula distancia entre dos puntos GPS en metros
+const distMeters = (a, b) => {
+  if (!a || !b) return 0;
+  const R = 6371000;
+  const dLat = (b[0] - a[0]) * Math.PI / 180;
+  const dLng = (b[1] - a[1]) * Math.PI / 180;
+  const lat1 = a[0] * Math.PI / 180;
+  const lat2 = b[0] * Math.PI / 180;
+  const x = Math.sin(dLat/2)**2 + Math.sin(dLng/2)**2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(x));
+};
+
+// Devuelve el ícono de Lucide según el tipo de maniobra
+const getManeuverIcon = (type, modifier) => {
+  // type: turn, depart, arrive, merge, ramp, fork, roundabout, continue, etc.
+  // modifier: left, right, sharp left, sharp right, slight left, slight right, straight, uturn
+  if (type === "arrive") return BadgeCheck;
+  if (type === "depart") return Navigation;
+  if (type === "roundabout" || type === "rotary") return RotateCw;
+  if (modifier === "uturn") return RotateCw;
+  if (modifier && modifier.includes("right")) {
+    if (modifier === "sharp right") return CornerUpRight;
+    if (modifier === "slight right") return ArrowUpRight;
+    return ArrowUpRight;
+  }
+  if (modifier && modifier.includes("left")) {
+    if (modifier === "sharp left") return CornerUpLeft;
+    if (modifier === "slight left") return ArrowUpLeft;
+    return ArrowUpLeft;
+  }
+  if (modifier === "straight") return ArrowUp;
+  return ArrowUp;
+};
+
+// Formatear metros legibles
+const fmtMeters = (m) => {
+  if (m == null) return "—";
+  if (m < 50) return "Ahora";
+  if (m < 1000) return `${Math.round(m / 10) * 10} m`;
+  return `${(m / 1000).toFixed(1)} km`;
+};
+const fmtMinutes = (sec) => {
+  if (sec == null) return "—";
+  const min = Math.round(sec / 60);
+  if (min < 1) return "Menos de 1 min";
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h} h ${m} min`;
+};
+
+const NavigationPanel = ({ onStop }) => {
+  const { toast } = useApp();
+  const [navData, setNavData] = useState(null);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [userPos, setUserPos] = useState(null);
+  const [distToNext, setDistToNext] = useState(null);
+  const [remainingDist, setRemainingDist] = useState(0);
+  const [remainingTime, setRemainingTime] = useState(0);
+
+  // === SISTEMA DE ALERTAS DE ZONAS PELIGROSAS ===
+  const [dangerZones, setDangerZones] = useState([]); // zonas detectadas en la ruta
+  const [activeAlert, setActiveAlert] = useState(null); // alerta visible ahora
+  const alertedZonesRef = useRef(new Set()); // zonas ya alertadas (no spam)
+
+  // Cargar datos de navegación al montar y generar zonas peligrosas en ruta
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proalert_active_nav");
+      if (saved) {
+        const data = JSON.parse(saved);
+        setNavData(data);
+        setRemainingDist(data.totalDistance || 0);
+        setRemainingTime(data.totalDuration || 0);
+
+        // Generar zonas peligrosas SIMULADAS a lo largo de la ruta
+        // (En producción: vendrían de tu backend con reportes ciudadanos reales)
+        if (data.coords && data.coords.length > 5) {
+          const zones = [];
+          const len = data.coords.length;
+          // Distribuir 2-3 zonas en el corredor de la ruta (segmento 30%, 60%, 80%)
+          const samples = [Math.floor(len * 0.3), Math.floor(len * 0.6), Math.floor(len * 0.85)];
+          const incidentTypes = [
+            { kind: "robo", label: "robos a transeúntes", count: 4, severity: "alta", color: "#EF4444", action: "Sube ventanas y guarda tu celular" },
+            { kind: "asalto", label: "asaltos a conductores en alto", count: 2, severity: "media", color: "#F59E0B", action: "No te detengas, mantén distancia con el auto de adelante" },
+            { kind: "robo-celular", label: "robos de celular", count: 6, severity: "alta", color: "#EF4444", action: "Guarda tu celular, no lo uses en luz roja" },
+          ];
+          samples.forEach((idx, i) => {
+            // Solo agregamos si hay incidentes que reportar (simulación: ~70% de chance)
+            if (Math.random() < 0.7 || i === 0) {
+              const tpl = incidentTypes[i % incidentTypes.length];
+              const c = data.coords[idx];
+              zones.push({
+                id: `zone_${i}`,
+                lat: c[0],
+                lng: c[1],
+                ...tpl,
+                period: "últimos 7 días",
+              });
+            }
+          });
+          setDangerZones(zones);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Tracking de GPS en vivo
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => setUserPos([pos.coords.latitude, pos.coords.longitude]),
+      () => {},
+      { enableHighAccuracy: true, timeout: 5000, maximumAge: 2000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
+
+  // Detección de proximidad a zona peligrosa
+  useEffect(() => {
+    if (!userPos || dangerZones.length === 0) return;
+
+    // Buscar la zona más cercana NO alertada todavía
+    let closestUnalerted = null;
+    let closestDist = Infinity;
+
+    for (const z of dangerZones) {
+      if (alertedZonesRef.current.has(z.id + "_consumed")) continue;
+      const d = distMeters(userPos, [z.lat, z.lng]);
+      if (d < closestDist) {
+        closestDist = d;
+        closestUnalerted = z;
+      }
+    }
+
+    if (!closestUnalerted) return;
+
+    // Alerta a 500m: pre-aviso
+    if (closestDist <= 500 && closestDist > 200 && !alertedZonesRef.current.has(closestUnalerted.id + "_far")) {
+      alertedZonesRef.current.add(closestUnalerted.id + "_far");
+      setActiveAlert({ ...closestUnalerted, distance: closestDist, level: "far" });
+      try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch {}
+      // Auto-ocultar después de 10 seg si no hay otra
+      setTimeout(() => {
+        setActiveAlert(curr => (curr && curr.id === closestUnalerted.id && curr.level === "far") ? null : curr);
+      }, 10000);
+    }
+
+    // Alerta a 200m: aviso fuerte
+    if (closestDist <= 200 && closestDist > 50 && !alertedZonesRef.current.has(closestUnalerted.id + "_near")) {
+      alertedZonesRef.current.add(closestUnalerted.id + "_near");
+      setActiveAlert({ ...closestUnalerted, distance: closestDist, level: "near" });
+      try { navigator.vibrate && navigator.vibrate([400, 150, 400, 150, 400]); } catch {}
+      // Reproducir tono corto (Web Audio API)
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880; gain.gain.value = 0.15;
+        osc.start(); osc.stop(ctx.currentTime + 0.3);
+        setTimeout(() => {
+          const osc2 = ctx.createOscillator();
+          osc2.connect(gain);
+          osc2.frequency.value = 660;
+          osc2.start(); osc2.stop(ctx.currentTime + 0.3);
+        }, 350);
+      } catch {}
+    }
+
+    // Cuando ya pasamos la zona (más de 50m alejándose), marcarla como consumida
+    if (closestDist > 600 && alertedZonesRef.current.has(closestUnalerted.id + "_near")) {
+      alertedZonesRef.current.add(closestUnalerted.id + "_consumed");
+      setActiveAlert(curr => (curr && curr.id === closestUnalerted.id) ? null : curr);
+    }
+  }, [userPos, dangerZones]);
+
+  // Calcular distancia al siguiente giro y avanzar pasos
+  useEffect(() => {
+    if (!navData || !userPos || !navData.steps || navData.steps.length === 0) return;
+    const step = navData.steps[currentStep];
+    if (!step) return;
+
+    const dToManeuver = distMeters(userPos, step.maneuverPoint);
+    setDistToNext(dToManeuver);
+
+    // Si estamos a menos de 25m del punto de maniobra, avanzar al siguiente paso
+    if (dToManeuver < 25 && currentStep < navData.steps.length - 1) {
+      setCurrentStep(s => s + 1);
+      try { navigator.vibrate && navigator.vibrate(150); } catch {}
+    }
+
+    // Recalcular distancia y tiempo restante con base en steps siguientes
+    let remD = 0, remT = 0;
+    for (let i = currentStep; i < navData.steps.length; i++) {
+      remD += navData.steps[i].distance || 0;
+      remT += navData.steps[i].duration || 0;
+    }
+    // Más una corrección para el step actual basada en cuánto falta del segmento
+    setRemainingDist(remD);
+    setRemainingTime(remT);
+
+    // Si ya llegamos (menos de 30m del destino y es último paso)
+    if (currentStep === navData.steps.length - 1 && dToManeuver < 30) {
+      toast("¡Llegaste a tu destino! 🎉");
+      handleStop();
+    }
+  }, [userPos, navData, currentStep]);
+
+  const handleStop = () => {
+    try { localStorage.removeItem("proalert_active_nav"); } catch {}
+    window.dispatchEvent(new CustomEvent("proalert_stopnav"));
+    window.dispatchEvent(new CustomEvent("proalert_clearroute"));
+    alertedZonesRef.current.clear();
+    if (onStop) onStop();
+  };
+
+  const dismissAlert = () => setActiveAlert(null);
+
+  if (!navData) return null;
+
+  const step = navData.steps[currentStep] || navData.steps[navData.steps.length - 1];
+  const nextStep = navData.steps[currentStep + 1];
+  const Icon = step ? getManeuverIcon(step.type, step.modifier) : ArrowUp;
+  const isArriving = step && step.type === "arrive";
+  const colorPrimary = isArriving ? "#10B981" : "#0077BB";
+
+  return (
+    <>
+      {/* ALERTA DE ZONA PELIGROSA - prioridad máxima, encima de todo */}
+      {activeAlert && (
+        <div style={{ pointerEvents: "auto" }}
+          className="absolute top-0 left-0 right-0 z-40 px-3 pt-2"
+          onClick={dismissAlert}>
+          <div className={`rounded-3xl p-4 ${activeAlert.level === "near" ? "animate-pulse" : ""}`}
+            style={{
+              background: `linear-gradient(135deg, ${activeAlert.color}, ${activeAlert.color}CC)`,
+              boxShadow: `0 12px 40px ${activeAlert.color}AA, 0 0 0 3px ${activeAlert.color}66`,
+              border: "2px solid white",
+            }}>
+            <div className="flex items-start gap-3">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0"
+                style={{ background: "rgba(255,255,255,0.25)", border: "1px solid rgba(255,255,255,0.4)" }}>
+                <AlertTriangle size={30} color="white" strokeWidth={2.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="font-display font-black text-white text-[10px] uppercase tracking-widest">
+                    {activeAlert.level === "near" ? "¡ATENCIÓN AHORA!" : "Zona peligrosa adelante"}
+                  </p>
+                  <p className="font-display font-bold text-white text-[10px] opacity-90">· {fmtMeters(activeAlert.distance)}</p>
+                </div>
+                <p className="font-display font-black text-white text-lg leading-tight mb-1">
+                  {activeAlert.count} {activeAlert.label}
+                </p>
+                <p className="text-[11px] font-body text-white opacity-95 leading-snug">
+                  Reportados en {activeAlert.period}
+                </p>
+                <div className="mt-2 pt-2 flex items-start gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.25)" }}>
+                  <Shield size={14} color="white" className="shrink-0 mt-0.5" />
+                  <p className="text-[12px] font-body text-white font-bold leading-snug flex-1">
+                    {activeAlert.action}
+                  </p>
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); dismissAlert(); }}
+                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                style={{ background: "rgba(255,255,255,0.25)" }}>
+                <X size={14} color="white" strokeWidth={2.5} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Panel SUPERIOR - próxima maniobra (se baja si hay alerta) */}
+      <div style={{ pointerEvents: "auto" }}
+        className={`absolute left-0 right-0 z-30 px-3 transition-all duration-300 ${activeAlert ? "top-32" : "top-0 pt-2"}`}>
+        <div className="rounded-3xl p-4 backdrop-blur-md"
+          style={{
+            background: `linear-gradient(135deg, ${colorPrimary}EE, ${colorPrimary}DD)`,
+            boxShadow: `0 8px 32px ${colorPrimary}66, 0 2px 8px rgba(0,0,0,0.4)`
+          }}>
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center shrink-0"
+              style={{ background: "rgba(255,255,255,0.2)", border: "1px solid rgba(255,255,255,0.3)" }}>
+              <Icon size={36} color="white" strokeWidth={2.5} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-black text-white text-2xl leading-tight">
+                {fmtMeters(distToNext)}
+              </p>
+              <p className="text-sm font-body text-white opacity-95 leading-tight">
+                {step?.instruction || "Continúa por la ruta"}
+              </p>
+              {step?.name && step.name !== "" && (
+                <p className="text-[11px] font-display font-bold uppercase tracking-wider text-white opacity-80 mt-0.5">
+                  {step.name}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Vista previa del siguiente paso */}
+          {nextStep && !isArriving && (
+            <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: "1px solid rgba(255,255,255,0.2)" }}>
+              {(() => {
+                const NextIcon = getManeuverIcon(nextStep.type, nextStep.modifier);
+                return <NextIcon size={14} color="white" />;
+              })()}
+              <p className="text-[11px] font-body text-white opacity-85 flex-1 truncate">
+                Luego: {nextStep.instruction}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Panel INFERIOR - resumen + salir */}
+      <div style={{ pointerEvents: "auto" }} className="absolute bottom-0 left-0 right-0 z-30 px-3 pb-3">
+        <div className="rounded-3xl p-3 backdrop-blur-md flex items-center gap-3"
+          style={{ background: `${C.surface}F2`, border: `1px solid ${C.border}`, boxShadow: "0 -8px 32px rgba(0,0,0,0.4)" }}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-1">
+              <p className="font-display font-black text-white text-xl leading-tight">{fmtMinutes(remainingTime)}</p>
+              <p className="text-xs font-body" style={{ color: C.muted }}>· {fmtMeters(remainingDist)}</p>
+            </div>
+            <p className="text-[10px] font-display font-bold uppercase tracking-wider truncate" style={{ color: C.muted }}>
+              {navData.destination ? `Hacia ${navData.destination}` : "En ruta"}
+            </p>
+          </div>
+
+          <button onClick={handleStop}
+            className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0"
+            style={{ background: C.red, boxShadow: `0 4px 12px ${C.red}66` }}>
+            <X size={20} color="white" strokeWidth={2.5} />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+};
+
 // === HOME SCREEN ===
-const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
+const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => {
+  const [navActive, setNavActive] = useState(false);
+
+  // Detectar si hay navegación activa al montar y escuchar eventos
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("proalert_active_nav");
+      if (saved) setNavActive(true);
+    } catch {}
+    const onStart = () => setNavActive(true);
+    const onStop = () => setNavActive(false);
+    window.addEventListener("proalert_startnav", onStart);
+    window.addEventListener("proalert_stopnav", onStop);
+    return () => {
+      window.removeEventListener("proalert_startnav", onStart);
+      window.removeEventListener("proalert_stopnav", onStop);
+    };
+  }, []);
+
+  return (
   <div className="relative h-full overflow-hidden" style={{ background: C.bg }}>
     {/* Capa 1: Mapa (ocupa todo, recibe gestos directamente) */}
     <MapView />
 
-    {/* Capa 2: UI superpuesta - SIN bloquear toques excepto en controles específicos */}
+    {/* Modo navegación activa: panel arriba y abajo */}
+    {navActive && <NavigationPanel onStop={() => setNavActive(false)} />}
+
+    {/* Capa 2: UI normal (oculta durante navegación) */}
+    {!navActive && (
     <div className="absolute inset-0 z-10 flex flex-col" style={{ pointerEvents: "none" }}>
       <div style={{ pointerEvents: "auto" }}>
         <StatusBar />
@@ -737,8 +1149,10 @@ const HomeScreen = ({ onNav, onMenu, onPanic, onWomen }) => (
         <BottomNav active="home" onNav={onNav} />
       </div>
     </div>
+    )}
   </div>
-);
+  );
+};
 
 // === QR SCAN con cámara real ===
 const ScanScreen = ({ onBack, onScanned, onNav, onPanic }) => {
@@ -4542,19 +4956,52 @@ const RouteScreen = ({ onBack, onNav }) => {
     toast(`Calculando ruta ${labelTipo}...`);
 
     try {
-      // Mapbox Directions API - ruta real siguiendo calles con tráfico
-      const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start[1]},${start[0]};${end[1]},${end[0]}?geometries=geojson&overview=full&access_token=${MAPBOX_TOKEN}`;
+      // Mapbox Directions API con instrucciones paso a paso en español
+      const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${start[1]},${start[0]};${end[1]},${end[0]}?geometries=geojson&overview=full&steps=true&language=es&voice_instructions=false&banner_instructions=true&access_token=${MAPBOX_TOKEN}`;
       const res = await fetch(url);
       const data = await res.json();
 
       if (data.routes && data.routes[0]) {
-        const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+        const route = data.routes[0];
+        const coords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+        // Extraer pasos navegables con instrucciones
+        const navSteps = [];
+        if (route.legs && route.legs[0] && route.legs[0].steps) {
+          route.legs[0].steps.forEach(step => {
+            navSteps.push({
+              instruction: step.maneuver.instruction || "Continúa",
+              type: step.maneuver.type || "",
+              modifier: step.maneuver.modifier || "",
+              distance: step.distance, // metros
+              duration: step.duration, // segundos
+              name: step.name || "",
+              coords: step.geometry.coordinates.map(c => [c[1], c[0]]),
+              maneuverPoint: [step.maneuver.location[1], step.maneuver.location[0]],
+            });
+          });
+        }
+
+        const navPayload = {
+          coords,
+          color,
+          steps: navSteps,
+          totalDistance: route.distance,
+          totalDuration: route.duration,
+          destination: destination,
+          labelTipo,
+        };
+
         try { localStorage.setItem("proalert_pending_route", JSON.stringify({ coords, color })); } catch {}
+        try { localStorage.setItem("proalert_active_nav", JSON.stringify(navPayload)); } catch {}
+
         window.dispatchEvent(new CustomEvent("proalert_drawroute", {
           detail: { coords, color }
         }));
-        toast(`Ruta ${labelTipo} trazada · ${(data.routes[0].distance/1000).toFixed(1)} km`);
-        setTimeout(() => onNav("home"), 1000);
+        window.dispatchEvent(new CustomEvent("proalert_startnav", { detail: navPayload }));
+
+        toast(`Ruta ${labelTipo} trazada · ${(route.distance/1000).toFixed(1)} km`);
+        setTimeout(() => onNav("home"), 800);
       } else {
         const fallbackCoords = [start, end];
         try { localStorage.setItem("proalert_pending_route", JSON.stringify({ coords: fallbackCoords, color })); } catch {}
